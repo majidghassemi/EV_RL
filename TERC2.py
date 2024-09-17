@@ -104,7 +104,7 @@ class TERC2:
             for v in self.graph.nodes():
                 if u != v:
                     path, distance = self.shortest_path(u, v)
-                    q_table[u][v] = -distance  # Initialize Q-value as negative distance for Q-learning
+                    q_table[u][v] = -distance
 
         with open(q_values_file, 'wb') as f:
             pickle.dump(q_table, f)
