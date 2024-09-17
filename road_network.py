@@ -28,12 +28,11 @@ class RandomGraph:
         for q in range(0, self.number_of_graphs):
             for (u, v, w) in self.G[q].edges(data=True):
                 # Assign distance based on normal distribution (mean 100, std deviation 15)
-                ran = max(1, int(np.random.normal(100, 15)))  # Ensuring positive distance
+                ran = max(1, int(np.random.normal(100, 15)))
                 w['distance'] = ran
-                w['battery_reduction'] = int(0.3 * ran)  # 30% of the distance
+                w['battery_reduction'] = int(0.3 * ran)
 
-            # Initialize the charging station list for graph q
-            self.charging_station[q] = []  # Fix: Initialize charging_station[q] before using it
+            self.charging_station[q] = []
             checked_nodes = []
             candidate_nodes = []
             unchecked_nodes = []
@@ -41,7 +40,7 @@ class RandomGraph:
             max_distance = 0
 
             checked_nodes.append(latest_station)
-            self.charging_station[q].append(latest_station)  # Fix: Add the first charging station
+            self.charging_station[q].append(latest_station)
 
             while len(checked_nodes) < self.total_nodes:
                 max_distance = 0
@@ -56,26 +55,26 @@ class RandomGraph:
                         checked_nodes = list(dict.fromkeys(checked_nodes))
                 if len(candidate_nodes) >= 1:
                     latest_station = candidate_nodes[-1]
-                    self.charging_station[q].append(latest_station)  # Fix: Add the charging station to the list
+                    self.charging_station[q].append(latest_station)
                     checked_nodes.append(latest_station)
                     checked_nodes = list(dict.fromkeys(checked_nodes))
                     candidate_nodes = []
                 else:
                     unchecked_nodes = list(set(self.G[q].nodes) - set(checked_nodes))
                     latest_station = random.choice(unchecked_nodes)
-                    self.charging_station[q].append(latest_station)  # Fix: Add the charging station to the list
+                    self.charging_station[q].append(latest_station)
                     checked_nodes.append(latest_station)
                     checked_nodes = list(dict.fromkeys(checked_nodes))
                     candidate_nodes = []
 
-            self.charging_station[q].extend(unchecked_nodes)  # Fix: Extend with unchecked nodes
+            self.charging_station[q].extend(unchecked_nodes)
 
         new_G = nx.Graph()
         new_charging_station = []
 
         for q in range(0, self.number_of_graphs):
             i = self.total_nodes * q
-            new_charging_station.extend(self.charging_station[q])  # Now charging stations are correctly initialized
+            new_charging_station.extend(self.charging_station[q])
             while i < self.total_nodes * (q + 1):
                 node_neighbors = [n for n in self.G[q].neighbors(i)]
                 for node in node_neighbors:
@@ -96,9 +95,7 @@ class RandomGraph:
 
 
     def connect_multiple_graphs(self, new_G):
-        # Logic to connect the graphs
         for i in range(self.number_of_graphs - 1):
-            # Connect charging stations between consecutive graphs
             num_connections = min(len(self.charging_station[i]), len(self.charging_station[i+1]))
             for j in range(num_connections):
                 ran = random.randint(50, 150)
@@ -144,7 +141,7 @@ class RandomGraph:
         print(f"Graph saved to {filename}")
         return graph
 
-# Example usage:
+
 graph_generator = RandomGraph(33, 0.25, 42, 3)
 generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
 
