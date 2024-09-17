@@ -4,7 +4,7 @@ from TERC2 import TERC2
 from HQLearning import QLearning
 
 graph_generator = RandomGraph(33, 0.25, 42, 3)
-generated_graph, charging_stations = graph_generator.generate_graph(show_stat=False)
+generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
 
 terc2 = TERC2(generated_graph)
 
@@ -19,7 +19,7 @@ q_learning = QLearning(adjacency_matrix=nx.to_numpy_array(generated_graph),
                        num_nodes=len(generated_graph.nodes), 
                        q_values_file="q_values.pkl")
 
-best_path, best_reward = q_learning.q_learning(start_state=0, end_state=0, num_epoch=750, visualize=True, save_video=False)
+best_path, best_reward = q_learning.q_learning(start_state=3, end_state=0, num_epoch=750, visualize=True, save_video=True)
 
 # Outputting the results
 print(f"Best path found by Q-learning: {best_path}")

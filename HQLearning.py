@@ -23,9 +23,16 @@ class QLearning:
         self.q_table = self.load_q_table(q_values_file) if q_values_file else np.zeros((self.num_nodes, self.num_nodes))
 
     def load_q_table(self, q_values_file):
-        """Load the Q-table from TERC2 results (pickle file)."""
+        """Load the Q-table from TERC2 results (pickle file) and ensure all state-action pairs are initialized."""
         with open(q_values_file, 'rb') as f:
             q_table = pickle.load(f)
+        
+        # Initialize any missing state-action pairs to 0
+        for s_curr in range(self.num_nodes):
+            for s_next in range(self.num_nodes):
+                if (s_curr, s_next) not in q_table:
+                    q_table[(s_curr, s_next)] = 0
+        
         print(f"Q-values loaded from {q_values_file}")
         return q_table
 
@@ -67,15 +74,18 @@ class QLearning:
         plt.show()
 
     def epsilon_greedy(self, s_curr, q):
-        potential_next_states = np.where(np.array(self.D[s_curr]) > 0)[0]
+        potential_next_states = np.where(np.array(self.D[int(s_curr)]) > 0)[0]
         if len(potential_next_states) == 0:
             return None
+
         if random.random() > self.epsilon:
-            q_of_next_states = q[s_curr][potential_next_states]
+            # Ensure the keys used for q are Python ints and provide default values if key not found
+            q_of_next_states = [q.get((int(s_curr), int(s_next)), 0) for s_next in potential_next_states]
             s_next = potential_next_states[np.argmax(q_of_next_states)]
         else:
             s_next = random.choice(potential_next_states)
-        return s_next
+
+        return int(s_next)
 
     def epsilon_decay(self, epoch):
         self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay_rate)
@@ -84,8 +94,8 @@ class QLearning:
         self.alpha = max(self.min_alpha, self.alpha * decay_rate)
 
     def reward_function(self, s_cur, s_next, battery_charge):
-        battery_charge -= (self.D[s_cur][s_next] * 0.3)
-        reward = -(1 * self.D[s_cur][s_next])  # Penalize by distance
+        battery_charge -= (self.D[int(s_cur)][int(s_next)] * 0.3)
+        reward = -(1 * self.D[int(s_cur)][int(s_next)])  # Penalize by distance
         if battery_charge < 20:
             reward -= 100000
         return reward, battery_charge
@@ -98,7 +108,7 @@ class QLearning:
         best_battery = 0
         best_path = []
 
-        if start_state == 0:
+        if start_state == end_state:
             raise Exception("start node(state) can't be target node(state)!")
 
         imgs = []
@@ -141,7 +151,7 @@ class QLearning:
             self.learning_rate_scheduler(i)
 
             if visualize:
-                self.plot_graph(print_shortest_path=False, src_node=start_state,
+                self.plot_graph(src_node=start_state,  # No print_shortest_path argument
                                 added_edges=list(zip(path[:-1], path[1:])),
                                 figure_title=f"q-learning: epoch {i}, reward: {reward}")
 
@@ -173,7 +183,7 @@ if __name__ == '__main__':
 
     # Initialize Q-learning with precomputed Q-values from TERC2
     ql = QLearning(D, num_nodes, q_values_file="q_values.pkl")
-    x, y = ql.q_learning(start_state=1, end_state=0, num_epoch=750, visualize=True, save_video=False)
+    best_path, best_reward = ql.q_learning(start_state=1, end_state=0, num_epoch=750, visualize=True, save_video=False)
 
     # Plot Q-value convergence
     plt.plot(ql.q_convergence)
