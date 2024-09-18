@@ -1,10 +1,14 @@
-import networkx as nx
 from road_network import RandomGraph
 from TERC2 import TERC2
 from HQLearning import QLearning
 
+import networkx as nx
+import pickle
+import numpy as np
+import random
+
 # Generate the road network using RandomGraph
-graph_generator = RandomGraph(33, 0.25, 42, 3)
+graph_generator = RandomGraph(45, 0.25, 42, 3)
 generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
 
 # Initialize TERC2 with the generated graph
@@ -18,18 +22,23 @@ for station in charging_stations:
 terc2.export_to_qlearning("q_values.pkl")
 terc2.export_terc_results("terc_results.pkl")
 
-# Extract the adjacency matrix from the generated graph (use to_numpy_array from networkx)
+# Extract the adjacency matrix from the generated graph
 adjacency_matrix = nx.to_numpy_array(generated_graph)
 
-# Initialize Q-learning with precomputed Q-values from TERC2
+# Set start and end state
+start_state = 93
+end_state = 4
+
+# Initialize Q-learning with the adjacency matrix and charging stations
 q_learning = QLearning(adjacency_matrix=adjacency_matrix, 
                        num_nodes=len(generated_graph.nodes), 
+                       charging_stations=charging_stations,  # Pass charging stations
                        q_values_file="q_values.pkl")
 
-# Run Q-learning
-best_path, best_reward = q_learning.q_learning(start_state=3, end_state=0, num_epoch=750, visualize=True, save_video=False)
+# Run Q-learning using start_state and end_state
+best_path, best_reward = q_learning.q_learning(start_state=start_state, end_state=end_state, num_epoch=30, visualize=True, save_video=True)
 
-# Outputting the results
+# Output the results
 print(f"Best path found by Q-learning: {best_path}")
 print(f"Best reward achieved: {best_reward}")
 
