@@ -8,7 +8,7 @@ import pickle
 import os
 
 class QLearning:
-    def __init__(self, adjacency_matrix, num_nodes, charging_stations, q_values_file=None, gamma=0.9, epsilon=0.05, alpha=0.1, battery_charge=70, epsilon_decay_rate=0.995, min_epsilon=0.01, min_alpha=0.001):
+    def __init__(self, adjacency_matrix, num_nodes, charging_stations, q_values_file=None, gamma=0.9, epsilon=0.05, alpha=0.1, epsilon_decay_rate=0.995, min_epsilon=0.01, min_alpha=0.001):
         self.adjacency_matrix = adjacency_matrix  # Use the adjacency matrix passed in during initialization
         self.num_nodes = num_nodes
         self.charging_stations = charging_stations  # Charging stations list
@@ -16,17 +16,17 @@ class QLearning:
         self.epsilon = epsilon
         self.alpha = alpha
         self.battery_charge = np.random.normal(75, 15)
-        self.battery_charge = max(0, min(100, self.battery_charge))
+        # self.battery_charge = max(0, min(100, self.battery_charge))  # Ensure battery charge is between 0 and 100
         self.epsilon_decay_rate = epsilon_decay_rate
         self.min_epsilon = min_epsilon
         self.min_alpha = min_alpha
         self.q_convergence = []
-        self.epoch_rewards = []  # Track total reward for each epoch
+        self.epoch_rewards = [] 
 
         # Initialize Q-table with TERC2 results if provided
         self.q_table = self.load_q_table(q_values_file) if q_values_file else np.zeros((self.num_nodes, self.num_nodes))
 
-        # Create a folder for saving the plots if it doesn't exist
+        # Create the epochs directory if it doesn't exist
         if not os.path.exists("epochs"):
             os.makedirs("epochs")
 
@@ -35,7 +35,7 @@ class QLearning:
         with open(q_values_file, 'rb') as f:
             q_table = pickle.load(f)
         
-        # Initialize any missing state-action pairs to 0
+        # Ensure all state-action pairs are initialized in the table
         for s_curr in range(self.num_nodes):
             for s_next in range(self.num_nodes):
                 if (s_curr, s_next) not in q_table:
@@ -116,19 +116,23 @@ class QLearning:
 
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
-        battery_charge -= (self.adjacency_matrix[int(s_cur)][int(s_next)] * 1)
+        # Reduce battery by distance traveled
+        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.5
+        battery_charge -= battery_consumed
         
         # Penalize by distance
         reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
         
-        # Reward for reaching charging stations
-        if s_next in self.charging_stations:
-            reward += 1  # Bonus for reaching a charging station
-            battery_charge = 80  # Fully recharge the battery at charging stations
+        # Check if the next state is a charging station
+        if s_next in self.charging_stations and battery_charge < 20:
+            # Add a time-based penalty for charging (optional), and recharge the battery to 80
+            charging_penalty = (80 - battery_charge) * 2  # Simulating waiting time at charging station
+            reward -= charging_penalty
+            battery_charge = 80  # Fully recharge the battery
         
         # Heavy penalty for low battery charge
-        if battery_charge < 20:
-            reward -= 100000
+        if battery_charge <19:
+            reward -= 1000  # Heavy penalty for running out of battery
         
         return reward, battery_charge
 
@@ -137,7 +141,7 @@ class QLearning:
         print("-" * 20)
         print("q_learning begins ...")
 
-        best_reward = -1000000000
+        best_reward = -10000
         best_battery = 0
         best_path = []
 
@@ -175,6 +179,8 @@ class QLearning:
                 s_cur = s_next
                 path.append(s_cur)
 
+                print(f"Transition: {s_cur} -> {s_next}, Battery charge: {battery_charge}, Reward: {reward}")
+
                 if s_cur == end_state or battery_charge <= 0:
                     if best_reward < reward:
                         best_reward = reward
@@ -186,6 +192,9 @@ class QLearning:
             self.epoch_rewards.append(epoch_reward)  # Store total epoch reward
             self.epsilon_decay(i)
             self.learning_rate_scheduler(i)
+
+            # Logging
+            print(f"Epoch {i}: Total Reward: {epoch_reward}, Max Q-Value Change: {max_q_change}, Battery Charge: {battery_charge}, Epsilon: {self.epsilon}")
 
             if visualize:
                 # Save the plot in the "epochs" directory
@@ -210,9 +219,11 @@ class QLearning:
 
         return best_path, best_reward
 
+
 # Example of plotting the reward and Q-value convergence:
 def plot_learning_metrics(q_learning_instance):
     """Plot the reward per epoch and Q-value convergence."""
+    # Plot Q-value convergence
     plt.figure()
     plt.plot(q_learning_instance.q_convergence)
     plt.xlabel('Epoch')
@@ -220,10 +231,10 @@ def plot_learning_metrics(q_learning_instance):
     plt.title('Q-Value Convergence')
     plt.savefig('q_value_convergence.png')
 
+    # Plot reward per epoch
     plt.figure()
     plt.plot(q_learning_instance.epoch_rewards)
     plt.xlabel('Epoch')
     plt.ylabel('Total Reward')
     plt.title('Reward per Epoch')
     plt.savefig('reward_per_epoch.png')
-
