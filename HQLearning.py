@@ -8,7 +8,7 @@ import pickle
 import os
 
 class QLearning:
-    def __init__(self, adjacency_matrix, num_nodes, charging_stations, q_values_file=None, gamma=0.9, epsilon=0.05, alpha=0.1, epsilon_decay_rate=0.995, min_epsilon=0.01, min_alpha=0.001):
+    def __init__(self, adjacency_matrix, num_nodes, charging_stations, q_values_file=None, gamma=0.9, epsilon=0.05, alpha=0.1, epsilon_decay_rate=0.998, min_epsilon=0.05, min_alpha=0.001):
         self.adjacency_matrix = adjacency_matrix  # Use the adjacency matrix passed in during initialization
         self.num_nodes = num_nodes
         self.charging_stations = charging_stations  # Charging stations list
@@ -16,12 +16,11 @@ class QLearning:
         self.epsilon = epsilon
         self.alpha = alpha
         self.battery_charge = np.random.normal(75, 15)
-        # self.battery_charge = max(0, min(100, self.battery_charge))  # Ensure battery charge is between 0 and 100
         self.epsilon_decay_rate = epsilon_decay_rate
         self.min_epsilon = min_epsilon
         self.min_alpha = min_alpha
         self.q_convergence = []
-        self.epoch_rewards = [] 
+        self.epoch_rewards = []
 
         # Initialize Q-table with TERC2 results if provided
         self.q_table = self.load_q_table(q_values_file) if q_values_file else np.zeros((self.num_nodes, self.num_nodes))
@@ -29,6 +28,9 @@ class QLearning:
         # Create the epochs directory if it doesn't exist
         if not os.path.exists("epochs"):
             os.makedirs("epochs")
+
+        self.best_epoch_results = {"reward": -float('inf'), "path": [], "battery": 0}  # To track best epoch
+        self.best_travel_time = float('inf')  # To track minimized travel time
 
     def load_q_table(self, q_values_file):
         """Load the Q-table from TERC2 results (pickle file)."""
@@ -50,6 +52,11 @@ class QLearning:
         for i in range(len(path) - 1):
             dis += self.adjacency_matrix[path[i]][path[i + 1]]
         return dis
+
+    def calculate_travel_time(self, path):
+        """Calculate total travel time for the given path."""
+        travel_time = sum([self.adjacency_matrix[path[i]][path[i+1]] for i in range(len(path) - 1)])
+        return travel_time
 
     def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):
         """Visualize and save the current graph with the agent's progress."""
@@ -116,23 +123,18 @@ class QLearning:
 
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
-        # Reduce battery by distance traveled
         battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.5
         battery_charge -= battery_consumed
         
-        # Penalize by distance
         reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
         
-        # Check if the next state is a charging station
         if s_next in self.charging_stations and battery_charge < 20:
-            # Add a time-based penalty for charging (optional), and recharge the battery to 80
-            charging_penalty = (80 - battery_charge) * 2  # Simulating waiting time at charging station
+            charging_penalty = (80 - battery_charge) * 2
             reward -= charging_penalty
-            battery_charge = 80  # Fully recharge the battery
-        
-        # Heavy penalty for low battery charge
-        if battery_charge <19:
-            reward -= 1000  # Heavy penalty for running out of battery
+            battery_charge = 80
+
+        if battery_charge < 19:
+            reward -= 1000
         
         return reward, battery_charge
 
@@ -144,6 +146,7 @@ class QLearning:
         best_reward = -10000
         best_battery = 0
         best_path = []
+        best_travel_time = float('inf')
 
         if start_state == end_state:
             raise Exception("start node(state) can't be target node(state)!")
@@ -179,8 +182,6 @@ class QLearning:
                 s_cur = s_next
                 path.append(s_cur)
 
-                print(f"Transition: {s_cur} -> {s_next}, Battery charge: {battery_charge}, Reward: {reward}")
-
                 if s_cur == end_state or battery_charge <= 0:
                     if best_reward < reward:
                         best_reward = reward
@@ -188,16 +189,25 @@ class QLearning:
                         best_battery = battery_charge
                     break
 
+            # Calculate travel time for this epoch
+            travel_time = self.calculate_travel_time(path)
+            if travel_time < best_travel_time:
+                best_travel_time = travel_time  # Update minimized travel time
+
+            # Track the best epoch results
+            if epoch_reward > self.best_epoch_results['reward']:
+                self.best_epoch_results['reward'] = epoch_reward
+                self.best_epoch_results['path'] = path
+                self.best_epoch_results['battery'] = battery_charge
+
             self.q_convergence.append(max_q_change)
             self.epoch_rewards.append(epoch_reward)  # Store total epoch reward
             self.epsilon_decay(i)
             self.learning_rate_scheduler(i)
 
-            # Logging
-            print(f"Epoch {i}: Total Reward: {epoch_reward}, Max Q-Value Change: {max_q_change}, Battery Charge: {battery_charge}, Epsilon: {self.epsilon}")
+            print(f"Epoch {i}: Total Reward: {epoch_reward}, Max Q-Value Change: {max_q_change}, Battery Charge: {battery_charge}, Travel Time: {travel_time}, Epsilon: {self.epsilon}")
 
             if visualize:
-                # Save the plot in the "epochs" directory
                 filename = f"epochs/qlearning_epoch_{i}.png"
                 img = self.plot_graph(src_node=start_state,
                                       added_edges=list(zip(path[:-1], path[1:])),
@@ -212,13 +222,16 @@ class QLearning:
         print(f"Best path for node {start_state} to node {end_state}: {'->'.join(map(str, best_path))}")
         print(f"Battery charge: {best_battery}")
         print(f"Reward: {best_reward}")
+        print(f"Minimized Travel Time: {best_travel_time}")
+
+        # Output the best epoch's results
+        print(f"Best Epoch Results - Reward: {self.best_epoch_results['reward']}, Path: {'->'.join(map(str, self.best_epoch_results['path']))}, Battery: {self.best_epoch_results['battery']}")
 
         if visualize and save_video:
             print("begin to generate gif/mp4 file...")
             imageio.mimsave("q-learning.gif", imgs, fps=5)
 
-        return best_path, best_reward
-
+        return best_path, best_reward, best_travel_time
 
 # Example of plotting the reward and Q-value convergence:
 def plot_learning_metrics(q_learning_instance):

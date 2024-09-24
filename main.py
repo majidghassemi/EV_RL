@@ -39,11 +39,15 @@ q_learning = QLearning(adjacency_matrix=adjacency_matrix,
                        epsilon_decay_rate=0.995)  # Decay rate for epsilon
 
 # Run Q-learning using start_state and end_state
-best_path, best_reward = q_learning.q_learning(start_state=start_state, end_state=end_state, num_epoch=250, visualize=True, save_video=True)
+best_path, best_reward, best_travel_time = q_learning.q_learning(start_state=start_state, end_state=end_state, num_epoch=250, visualize=True, save_video=True)
 
 # Output the results
 print(f"Best path found by Q-learning: {best_path}")
 print(f"Best reward achieved: {best_reward}")
+print(f"Minimized travel time across all epochs: {best_travel_time}")
+
+# Output the best epoch results
+print(f"Best Epoch Results - Reward: {q_learning.best_epoch_results['reward']}, Path: {'->'.join(map(str, q_learning.best_epoch_results['path']))}, Battery: {q_learning.best_epoch_results['battery']}")
 
 # Plot Q-value convergence and save it
 plt.plot(q_learning.q_convergence)
