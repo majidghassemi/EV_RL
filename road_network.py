@@ -37,7 +37,6 @@ class RandomGraph:
             candidate_nodes = []
             unchecked_nodes = []
             latest_station = q * self.total_nodes
-            max_distance = 0
 
             checked_nodes.append(latest_station)
             self.charging_station[q].append(latest_station)
@@ -126,23 +125,21 @@ class RandomGraph:
         plt.show()
 
     def export_graph(self, graph, filename):
-        """Exports the graph to a file."""
+        """Exports the graph to a file using pickle."""
         with open(filename, 'wb') as f:
             pickle.dump(graph, f)
-        # nx.write_gpickle(graph, filename)
         print(f"Graph saved to {filename}")
 
     def import_graph(self, filename):
-        """Imports a graph from a file."""
+        """Imports a graph from a file using pickle."""
         with open(filename, 'rb') as f:
-            graph = pickle.load()
-            # pickle.dump(graph, f)
-        # nx.write_gpickle(graph, filename)
-        print(f"Graph saved to {filename}")
+            graph = pickle.load(f)
+        print(f"Graph loaded from {filename}")
         return graph
 
 
-graph_generator = RandomGraph(33, 0.25, 42, 3)
+# Example usage
+graph_generator = RandomGraph(100, 0.25, 42, 1)
 generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
 
 # Export the generated graph
