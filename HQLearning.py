@@ -15,7 +15,7 @@ class QLearning:
         self.gamma = gamma
         self.epsilon = epsilon
         self.alpha = alpha
-        self.battery_charge = battery_charge
+        self.initial_battery_charge = battery_charge  # Renamed for clarity
         self.epsilon_decay_rate = epsilon_decay_rate
         self.min_epsilon = min_epsilon
         self.min_alpha = min_alpha
@@ -32,14 +32,29 @@ class QLearning:
         if not os.path.exists("epochs"):
             os.makedirs("epochs")
 
-        self.best_epoch_results = {"reward": -float('inf'), "path": [], "battery": 0, "distance": 0, "travel_time": 0, "waiting_time": 0}  # To track best epoch
+        self.best_epoch_results = {
+            "reward": -float('inf'),
+            "path": [],
+            "battery": 0,
+            "distance": 0,
+            "travel_time": 0,
+            "waiting_time": 0
+        }  # To track best epoch
         self.best_travel_time = float('inf')  # To track minimized travel time
 
     def load_q_table(self, q_values_file):
         """Load the Q-table from TERC2 results (pickle file)."""
         with open(q_values_file, 'rb') as f:
             q_table = pickle.load(f)
-        return np.array(q_table)
+        
+        # Ensure all state-action pairs are initialized in the table
+        for s_curr in range(self.num_nodes):
+            for s_next in range(self.num_nodes):
+                if (s_curr, s_next) not in q_table:
+                    q_table[(s_curr, s_next)] = 0
+        
+        print(f"Q-values loaded from {q_values_file}")
+        return q_table
 
     def cal_distance(self, path):
         """Calculate the total distance of a given path."""
@@ -103,7 +118,7 @@ class QLearning:
             print(f"Plot saved as {filename}")
 
         # Convert figure to numpy array
-        img = np.frombuffer(fig.canvas.tobytes(), dtype=np.uint8)
+        img = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         img = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         
         plt.close(fig)
@@ -116,7 +131,7 @@ class QLearning:
             return None
 
         if random.random() > self.epsilon:
-            q_of_next_states = [q[int(s_curr), int(s_next)] for s_next in potential_next_states]
+            q_of_next_states = [q.get((int(s_curr), int(s_next)), 0) for s_next in potential_next_states]
             s_next = potential_next_states[np.argmax(q_of_next_states)]
         else:
             s_next = random.choice(potential_next_states)
@@ -133,7 +148,7 @@ class QLearning:
 
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
-        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.9
+        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.3  # Adjusted from 0.9 to 0.3
         battery_charge -= battery_consumed
         
         reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
@@ -148,7 +163,6 @@ class QLearning:
             if battery_charge <= 19:
                 reward -= 1000
 
-        
         return reward, battery_charge
 
     def q_learning(self, start_state, end_state, num_epoch, visualize=True, save_video=True):
@@ -167,16 +181,12 @@ class QLearning:
         imgs = []
         q = self.q_table 
         convergence_threshold = 1e-5
-        step_limit = 200  # Max steps per episode
 
         for i in range(1, num_epoch + 1):
-            reward = 0
-            battery_charge = self.battery_charge
+            battery_charge = self.initial_battery_charge  # Reset battery_charge at the start of each epoch
             s_cur = start_state
             path = [s_cur]
-            len_of_path = 0
             max_q_change = 0
-            steps = 0  # Track steps per episode
 
             epoch_reward = 0  # Track reward for this epoch
             epoch_distance = 0  # Track distance for this epoch
@@ -184,23 +194,16 @@ class QLearning:
             epoch_waiting_time = 0  # Track waiting time for charging
 
             while True:
-                steps += 1
-                if steps > step_limit:
-                    break  # Prevent infinite loop
-
                 s_next = self.epsilon_greedy(s_cur, q)
                 if s_next is None:
                     break
 
+                # Select s_next_next for Q-learning update
                 s_next_next = self.epsilon_greedy(s_next, q)
                 reward, battery_charge = self.reward_function(s_cur, s_next, battery_charge)
                 epoch_reward += reward  # Add to epoch reward
 
-                if s_next_next is not None:
-                    delta = reward + self.gamma * q[s_next, s_next_next] - q[s_cur, s_next]
-                else:
-                    delta = reward - q[s_cur, s_next]
-
+                delta = reward + self.gamma * (q[s_next, s_next_next] if s_next_next is not None else 0) - q[s_cur, s_next]
                 q_change = self.alpha * delta
                 q[s_cur, s_next] += q_change
 
@@ -209,16 +212,16 @@ class QLearning:
                 path.append(s_cur)
 
                 if s_cur == end_state or battery_charge <= 0:
-                    if best_reward < reward:
-                        best_reward = reward
+                    if best_reward < epoch_reward:
+                        best_reward = epoch_reward
                         best_path = path
                         best_battery = battery_charge
                     break
 
             # Calculate travel time and distance for this epoch
-            travel_time = self.calculate_travel_time(path)
+            travel_time = self.calculate_travel_time(path)  # Travel time is now distance * fixed scalar
             distance = self.cal_distance(path)
-            waiting_time = self.calculate_waiting_time(path, self.battery_charge)
+            waiting_time = self.calculate_waiting_time(path, battery_charge)
 
             # Track epoch data
             self.epoch_distances.append(distance)
@@ -249,9 +252,9 @@ class QLearning:
             if visualize:
                 filename = f"epochs/qlearning_epoch_{i}.png"
                 img = self.plot_graph(src_node=start_state,
-                                      added_edges=list(zip(path[:-1], path[1:])),
-                                      figure_title=f"q-learning: epoch {i}, reward: {reward}",
-                                      filename=filename)
+                                    added_edges=list(zip(path[:-1], path[1:])),
+                                    figure_title=f"q-learning: epoch {i}, reward: {reward}",
+                                    filename=filename)
                 imgs.append(img)  # Append the image to the list
 
             if max_q_change < convergence_threshold:
@@ -266,13 +269,51 @@ class QLearning:
         print(f"Total Waiting Time for Charging: {self.best_epoch_results['waiting_time']}")
 
         if visualize and save_video:
-            print("begin to generate gif/mp4 file...")
+            print("Begin to generate gif/mp4 file...")
             imageio.mimsave("q-learning.gif", imgs, fps=5)
 
         return self.best_epoch_results
 
-    def save_q_table(self, filename):
-        """Save the Q-table to a file."""
-        with open(filename, 'wb') as f:
-            pickle.dump(self.q_table, f)
-        print(f"Q-table saved to {filename}")
+
+# Example of plotting the learning metrics
+def plot_learning_metrics(q_learning_instance):
+    """Plot the reward, distance, travel time, and waiting time per epoch."""
+    # Plot Q-value convergence
+    plt.figure()
+    plt.plot(q_learning_instance.q_convergence)
+    plt.xlabel('Epoch')
+    plt.ylabel('Max Q-Value Change')
+    plt.title('Q-Value Convergence')
+    plt.savefig('q_value_convergence.png')
+
+    # Plot reward per epoch
+    plt.figure()
+    plt.plot(q_learning_instance.epoch_rewards)
+    plt.xlabel('Epoch')
+    plt.ylabel('Total Reward')
+    plt.title('Reward per Epoch')
+    plt.savefig('reward_per_epoch.png')
+
+    # Plot total traveled distance per epoch
+    plt.figure()
+    plt.plot(q_learning_instance.epoch_distances)
+    plt.xlabel('Epoch')
+    plt.ylabel('Total Distance')
+    plt.title('Total Traveled Distance per Epoch')
+    plt.savefig('total_distance_per_epoch.png')
+
+    # Plot total traveling time per epoch
+    plt.figure()
+    plt.plot(q_learning_instance.epoch_travel_times)
+    plt.xlabel('Epoch')
+    plt.ylabel('Total Travel Time')
+    plt.title('Total Travel Time per Epoch')
+    plt.savefig('total_travel_time_per_epoch.png')
+
+    # Plot total waiting time for charging per epoch
+    plt.figure()
+    plt.plot(q_learning_instance.epoch_waiting_times)
+    plt.xlabel('Epoch')
+    plt.ylabel('Total Waiting Time')
+    plt.title('Total Waiting Time for Charging per Epoch')
+    plt.savefig('total_waiting_time_per_epoch.png')

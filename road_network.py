@@ -139,8 +139,8 @@ class RandomGraph:
 
 
 # Example usage
-graph_generator = RandomGraph(100, 0.25, 42, 1)
-generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
+# graph_generator = RandomGraph(100, 0.25, 42, 1)
+# generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
 
-# Export the generated graph
-graph_generator.export_graph(generated_graph, "road_network.gpickle")
+# # Export the generated graph
+# graph_generator.export_graph(generated_graph, "road_network.gpickle")
