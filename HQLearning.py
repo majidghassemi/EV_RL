@@ -68,14 +68,14 @@ class QLearning:
         travel_time = sum([self.adjacency_matrix[path[i]][path[i+1]] for i in range(len(path) - 1)])
         return travel_time
 
-    def calculate_waiting_time(self, path, battery_charge):
-        """Calculate total waiting time for charging along the path."""
-        waiting_time = 0
-        for node in path:
-            if node in self.charging_stations and battery_charge < 20:
-                waiting_time += (80 - battery_charge) / 2  # Example waiting time based on battery recharge
-                battery_charge = 80  # Recharge battery
-        return waiting_time
+    # def calculate_waiting_time(self, path, battery_charge):
+    #     """Calculate total waiting time for charging along the path."""
+    #     waiting_time = 0
+    #     for node in path:
+    #         if node in self.charging_stations and battery_charge < 20:
+    #             waiting_time += (80 - battery_charge) / 2  # Example waiting time based on battery recharge
+    #             battery_charge = 80  # Recharge battery
+    #     return waiting_time
 
     def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):
         """Visualize and save the current graph with the agent's progress."""
@@ -146,24 +146,44 @@ class QLearning:
         """Decay the learning rate over time to stabilize updates."""
         self.alpha = max(self.min_alpha, self.alpha * decay_rate)
 
+    # def reward_function(self, s_cur, s_next, battery_charge):
+    #     """Define the reward function with respect to distance and battery charge."""
+    #     battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.3  # Adjusted from 0.9 to 0.3
+    #     battery_charge -= battery_consumed
+        
+    #     reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
+        
+    #     if s_next in self.charging_stations and battery_charge < 20:
+    #         # Recharge at charging station
+    #         charging_penalty = (80 - battery_charge) * 2
+    #         reward -= charging_penalty
+    #         battery_charge = 80  # Recharge the battery
+    #     else:
+    #         # Apply severe penalty if the battery is critically low
+    #         if battery_charge <= 19:
+    #             reward -= 1000
+
+    #     return reward, battery_charge
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
-        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.3  # Adjusted from 0.9 to 0.3
+        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.5
         battery_charge -= battery_consumed
-        
-        reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
-        
-        if s_next in self.charging_stations and battery_charge < 20:
-            # Recharge at charging station
-            charging_penalty = (80 - battery_charge) * 2
-            reward -= charging_penalty
-            battery_charge = 80  # Recharge the battery
-        else:
-            # Apply severe penalty if the battery is critically low
-            if battery_charge <= 19:
-                reward -= 1000
 
+        # Base negative reward for traveling the distance
+        reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
+
+        # Penalize if battery falls below 20
+        if battery_charge < 20:
+            reward -= 1000  # Large penalty for battery going below 20
+
+        # If reaching a charging station and battery is below 20, recharge and penalize for waiting time
+        if s_next in self.charging_stations and battery_charge < 20:
+            charging_penalty = (80 - battery_charge) * 2  # Penalty for the time spent recharging
+            reward -= charging_penalty  # Subtract a penalty for recharging
+            battery_charge = 80  # Recharge the battery to full capacity (80)
+        
         return reward, battery_charge
+
 
     def q_learning(self, start_state, end_state, num_epoch, visualize=True, save_video=True):
         """Run the Q-learning algorithm."""
@@ -203,6 +223,13 @@ class QLearning:
                 reward, battery_charge = self.reward_function(s_cur, s_next, battery_charge)
                 epoch_reward += reward  # Add to epoch reward
 
+                # Check if we need to wait at a charging station and recharge the battery
+                if s_next in self.charging_stations and battery_charge < 20:
+                    waiting_time = (80 - battery_charge) / 2  # Example waiting time based on recharge
+                    epoch_waiting_time += waiting_time  # Accumulate waiting time
+                    battery_charge = 80  # Recharge battery
+
+                # Apply Q-learning update
                 delta = reward + self.gamma * (q[s_next, s_next_next] if s_next_next is not None else 0) - q[s_cur, s_next]
                 q_change = self.alpha * delta
                 q[s_cur, s_next] += q_change
@@ -211,6 +238,7 @@ class QLearning:
                 s_cur = s_next
                 path.append(s_cur)
 
+                # Break the loop if end state is reached or battery is depleted
                 if s_cur == end_state or battery_charge <= 0:
                     if best_reward < epoch_reward:
                         best_reward = epoch_reward
@@ -221,12 +249,11 @@ class QLearning:
             # Calculate travel time and distance for this epoch
             travel_time = self.calculate_travel_time(path)  # Travel time is now distance * fixed scalar
             distance = self.cal_distance(path)
-            waiting_time = self.calculate_waiting_time(path, battery_charge)
 
             # Track epoch data
             self.epoch_distances.append(distance)
             self.epoch_travel_times.append(travel_time)
-            self.epoch_waiting_times.append(waiting_time)
+            self.epoch_waiting_times.append(epoch_waiting_time)
 
             if travel_time < best_travel_time:
                 best_travel_time = travel_time  # Update minimized travel time
@@ -239,7 +266,7 @@ class QLearning:
                     "battery": battery_charge,
                     "distance": distance,
                     "travel_time": travel_time,
-                    "waiting_time": waiting_time
+                    "waiting_time": epoch_waiting_time
                 }
 
             self.q_convergence.append(max_q_change)
@@ -247,7 +274,7 @@ class QLearning:
             self.epsilon_decay(i)
             self.learning_rate_scheduler(i)
 
-            print(f"Epoch {i}: Total Reward: {epoch_reward}, Distance: {distance}, Travel Time: {travel_time}, Waiting Time: {waiting_time}, Max Q-Value Change: {max_q_change}, Battery Charge: {battery_charge}, Epsilon: {self.epsilon}")
+            print(f"Epoch {i}: Total Reward: {epoch_reward}, Distance: {distance}, Travel Time: {travel_time}, Waiting Time: {epoch_waiting_time}, Max Q-Value Change: {max_q_change}, Battery Charge: {battery_charge}, Epsilon: {self.epsilon}")
 
             if visualize:
                 filename = f"epochs/qlearning_epoch_{i}.png"
@@ -273,6 +300,7 @@ class QLearning:
             imageio.mimsave("q-learning.gif", imgs, fps=5)
 
         return self.best_epoch_results
+
 
 
 # Example of plotting the learning metrics

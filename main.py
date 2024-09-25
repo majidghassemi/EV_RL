@@ -67,30 +67,30 @@ import matplotlib.pyplot as plt
 
 # DQN RESULTS TESTING
 
-graph_generator = RandomGraph(45, 0.25, 42, 3)
-generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
+# graph_generator = RandomGraph(45, 0.25, 42, 3)
+# generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
 
-# Extract the adjacency matrix from the generated graph
-adjacency_matrix = nx.to_numpy_array(generated_graph)
+# # Extract the adjacency matrix from the generated graph
+# adjacency_matrix = nx.to_numpy_array(generated_graph)
 
-# Set start and end state
-start_state = 93
-end_state = 15
+# # Set start and end state
+# start_state = 93
+# end_state = 15
 
-# Initialize DQN agent
-dqn_agent = DQNAgent(adjacency_matrix=adjacency_matrix, 
-                     num_nodes=len(generated_graph.nodes), 
-                     charging_stations=charging_stations, 
-                    #  epsilon=0.2,  # Initial epsilon for exploration
-                    #  epsilon_decay=0.995, 
-                    #  batch_size=64, 
-                    #  memory_size=10000)
-)
+# # Initialize DQN agent
+# dqn_agent = DQNAgent(adjacency_matrix=adjacency_matrix, 
+#                      num_nodes=len(generated_graph.nodes), 
+#                      charging_stations=charging_stations, 
+#                     #  epsilon=0.2,  # Initial epsilon for exploration
+#                     #  epsilon_decay=0.995, 
+#                     #  batch_size=64, 
+#                     #  memory_size=10000)
+# )
 
-# Run DQN using start_state and end_state
-best_path, best_reward, min_travel_time = dqn_agent.dqn_learning(start_state=start_state, end_state=end_state, num_epoch=250)
+# # Run DQN using start_state and end_state
+# best_path, best_reward, min_travel_time = dqn_agent.dqn_learning(start_state=start_state, end_state=end_state, num_epoch=250)
 
-# Output the results
-print(f"Best path found by DQN: {best_path}")
-print(f"Best reward achieved: {best_reward}")
-print(f"Minimized travel time: {min_travel_time}")
+# # Output the results
+# print(f"Best path found by DQN: {best_path}")
+# print(f"Best reward achieved: {best_reward}")
+# print(f"Minimized travel time: {min_travel_time}")
