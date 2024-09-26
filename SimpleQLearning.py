@@ -8,13 +8,13 @@ import os
 
 class SimpleQLearning:
     def __init__(self, adjacency_matrix, num_nodes, charging_stations, gamma=0.9, epsilon=0.2, alpha=0.1, epsilon_decay_rate=0.98, min_epsilon=0.01, min_alpha=0.001, battery_charge=80):
-        self.adjacency_matrix = adjacency_matrix  # Use the adjacency matrix passed in during initialization
+        self.adjacency_matrix = adjacency_matrix
         self.num_nodes = num_nodes
-        self.charging_stations = charging_stations  # Charging stations list
+        self.charging_stations = charging_stations
         self.gamma = gamma
         self.epsilon = epsilon
         self.alpha = alpha
-        self.initial_battery_charge = battery_charge  # Renamed for clarity
+        self.initial_battery_charge = battery_charge
         self.epsilon_decay_rate = epsilon_decay_rate
         self.min_epsilon = min_epsilon
         self.min_alpha = min_alpha
@@ -24,7 +24,7 @@ class SimpleQLearning:
         self.epoch_travel_times = []
         self.epoch_waiting_times = []
 
-        # Initialize Q-table with zeros (no heuristic initialization)
+        # Initialize Q-table with zeros
         self.q_table = np.zeros((self.num_nodes, self.num_nodes))
 
         # Create the epochs directory if it doesn't exist
@@ -38,8 +38,8 @@ class SimpleQLearning:
             "distance": 0,
             "travel_time": 0,
             "waiting_time": 0
-        }  # To track best epoch
-        self.best_travel_time = float('inf')  # To track minimized travel time
+        }
+        self.best_travel_time = float('inf')
 
     def cal_distance(self, path):
         """Calculate the total distance of a given path."""
@@ -77,11 +77,10 @@ class SimpleQLearning:
         nodes = nx.draw_networkx_nodes(G, pos, node_color="y")
         nodes.set_edgecolor('black')
 
-        # Dynamically set the source node
         if src_node is not None:
-            nodes = nx.draw_networkx_nodes(G, pos, nodelist=[src_node], node_color="g")  # Highlight source node
+            nodes = nx.draw_networkx_nodes(G, pos, nodelist=[src_node], node_color="g")
         else:
-            nodes = nx.draw_networkx_nodes(G, pos, nodelist=[0], node_color="g")  # Fallback to node 0
+            nodes = nx.draw_networkx_nodes(G, pos, nodelist=[0], node_color="g")
 
         nodes.set_edgecolor('black')
         nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=labels, font_size=15)
@@ -94,7 +93,7 @@ class SimpleQLearning:
             print(f"Plot saved as {filename}")
 
         plt.close(fig)
-    
+
     def epsilon_greedy(self, s_curr, q):
         """Select next state using epsilon-greedy strategy."""
         potential_next_states = np.where(np.array(self.adjacency_matrix[int(s_curr)]) > 0)[0]
@@ -109,7 +108,6 @@ class SimpleQLearning:
 
         return int(s_next)
 
-
     def epsilon_decay(self, epoch):
         """Decay the epsilon value to reduce exploration over time."""
         self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay_rate)
@@ -123,19 +121,16 @@ class SimpleQLearning:
         battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.5
         battery_charge -= battery_consumed
 
-        # Base negative reward for traveling the distance
-        reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
+        reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])  # Base negative reward
 
-        # Penalize if battery falls below 20
         if battery_charge < 20:
-            reward -= 1000  # Large penalty for battery going below 20
+            reward -= 1000  # Penalize if battery falls below 20
 
-        # If reaching a charging station and battery is below 20, recharge and penalize for waiting time
         if s_next in self.charging_stations and battery_charge < 20:
-            charging_penalty = (80 - battery_charge) * 2  # Penalty for the time spent recharging
-            reward -= charging_penalty  # Subtract a penalty for recharging
-            battery_charge = 80  # Recharge the battery to full capacity (80)
-        
+            charging_penalty = (80 - battery_charge) * 2
+            reward -= charging_penalty  # Penalize for recharging
+            battery_charge = 80  # Recharge to full
+
         return reward, battery_charge
 
     def sq_learning(self, start_state, end_state, num_epoch, visualize=True, save_video=True):
@@ -156,27 +151,25 @@ class SimpleQLearning:
         convergence_threshold = 1e-5
 
         for i in range(1, num_epoch + 1):
-            battery_charge = self.initial_battery_charge  # Reset battery_charge at the start of each epoch
+            battery_charge = self.initial_battery_charge
             s_cur = start_state
             path = [s_cur]
             max_q_change = 0
 
-            epoch_reward = 0  # Track reward for this epoch
-            epoch_distance = 0  # Track distance for this epoch
-            epoch_travel_time = 0  # Track travel time for this epoch
-            epoch_waiting_time = 0  # Track waiting time for charging
+            epoch_reward = 0
+            epoch_distance = 0
+            epoch_travel_time = 0
+            epoch_waiting_time = 0
 
             while True:
                 s_next = self.epsilon_greedy(s_cur, q)
                 if s_next is None:
                     break
 
-                # Select s_next_next for Q-learning update
                 s_next_next = self.epsilon_greedy(s_next, q)
                 reward, battery_charge = self.reward_function(s_cur, s_next, battery_charge)
-                epoch_reward += reward  # Add to epoch reward
+                epoch_reward += reward
 
-                # Apply Q-learning update
                 delta = reward + self.gamma * (q[s_next, s_next_next] if s_next_next is not None else 0) - q[s_cur, s_next]
                 q_change = self.alpha * delta
                 q[s_cur, s_next] += q_change
@@ -185,7 +178,6 @@ class SimpleQLearning:
                 s_cur = s_next
                 path.append(s_cur)
 
-                # Break the loop if end state is reached or battery is depleted
                 if s_cur == end_state or battery_charge <= 0:
                     if best_reward < epoch_reward:
                         best_reward = epoch_reward
@@ -193,19 +185,16 @@ class SimpleQLearning:
                         best_battery = battery_charge
                     break
 
-            # Calculate travel time and distance for this epoch
-            travel_time = self.calculate_travel_time(path)  # Travel time is now distance * fixed scalar
+            travel_time = self.calculate_travel_time(path)
             distance = self.cal_distance(path)
 
-            # Track epoch data
             self.epoch_distances.append(distance)
             self.epoch_travel_times.append(travel_time)
             self.epoch_waiting_times.append(epoch_waiting_time)
 
             if travel_time < best_travel_time:
-                best_travel_time = travel_time  # Update minimized travel time
+                best_travel_time = travel_time
 
-            # Track the best epoch results
             if epoch_reward > self.best_epoch_results['reward']:
                 self.best_epoch_results = {
                     "reward": epoch_reward,
@@ -217,7 +206,7 @@ class SimpleQLearning:
                 }
 
             self.q_convergence.append(max_q_change)
-            self.epoch_rewards.append(epoch_reward)  # Store total epoch reward
+            self.epoch_rewards.append(epoch_reward)
             self.epsilon_decay(i)
             self.learning_rate_scheduler(i)
 
@@ -225,11 +214,11 @@ class SimpleQLearning:
 
             if visualize:
                 filename = f"epochs/sqlearning_epoch_{i}.png"
-                img = self.plot_graph(src_node=start_state,
-                                      added_edges=list(zip(path[:-1], path[1:])),
-                                      figure_title=f"sq-learning: epoch {i}, reward: {reward}",
-                                      filename=filename)
-                imgs.append(img)  # Append the image to the list
+                self.plot_graph(src_node=start_state,
+                                added_edges=list(zip(path[:-1], path[1:])),
+                                figure_title=f"sq-learning: epoch {i}, reward: {reward}",
+                                filename=filename)
+                imgs.append(filename)  # Append the filename to the list
 
             if max_q_change < convergence_threshold:
                 print(f"Converged after {i} epochs.")
@@ -243,7 +232,7 @@ class SimpleQLearning:
 
         if visualize and save_video:
             print("Begin to generate gif/mp4 file...")
-            imageio.mimsave("sq-learning.gif", imgs, fps=5)
+            images = [imageio.imread(img) for img in imgs]  # Read images from the files
+            imageio.mimsave("sq-learning.gif", images, fps=5)
 
         return self.best_epoch_results
-

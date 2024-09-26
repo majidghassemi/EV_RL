@@ -70,7 +70,7 @@ sq_learning = SimpleQLearning(adjacency_matrix=adjacency_matrix,
                        num_nodes=len(generated_graph.nodes), 
                        charging_stations=charging_stations)  # Decay rate for epsilon
 
-# Run Q-learning using start_state and end_state
+# Run Simple Q-learning using start_state and end_state
 best_path_q, best_reward_q, best_travel_time_q, *_ = sq_learning.sq_learning(start_state=start_state, end_state=end_state, num_epoch=250, visualize=True, save_video=True)
 
 # Output the results
@@ -110,12 +110,7 @@ plt.close()
 # # Initialize DQN agent
 # dqn_agent = DQNAgent(adjacency_matrix=adjacency_matrix, 
 #                      num_nodes=len(generated_graph.nodes), 
-#                      charging_stations=charging_stations, 
-#                     #  epsilon=0.2,  # Initial epsilon for exploration
-#                     #  epsilon_decay=0.995, 
-#                     #  batch_size=64, 
-#                     #  memory_size=10000)
-# )
+#                      charging_stations=charging_stations)
 
 # # Run DQN using start_state and end_state
 # best_path, best_reward, min_travel_time = dqn_agent.dqn_learning(start_state=start_state, end_state=end_state, num_epoch=250)
