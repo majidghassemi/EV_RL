@@ -102,12 +102,13 @@ class SimpleQLearning:
             return None
 
         if random.random() > self.epsilon:
-            q_of_next_states = [q.get((int(s_curr), int(s_next)), 0) for s_next in potential_next_states]
+            q_of_next_states = [q[int(s_curr), int(s_next)] for s_next in potential_next_states]  # Direct array indexing
             s_next = potential_next_states[np.argmax(q_of_next_states)]
         else:
             s_next = random.choice(potential_next_states)
 
         return int(s_next)
+
 
     def epsilon_decay(self, epoch):
         """Decay the epsilon value to reduce exploration over time."""
