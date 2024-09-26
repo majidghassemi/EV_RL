@@ -166,11 +166,11 @@ class QLearning:
     #     return reward, battery_charge
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
-        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.5
+        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.85
         battery_charge -= battery_consumed
 
         # Base negative reward for traveling the distance
-        reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
+        reward = -(2.5 * self.adjacency_matrix[int(s_cur)][int(s_next)])
 
         # Penalize if battery falls below 20
         if battery_charge < 20:
@@ -178,7 +178,7 @@ class QLearning:
 
         # If reaching a charging station and battery is below 20, recharge and penalize for waiting time
         if s_next in self.charging_stations and battery_charge < 20:
-            charging_penalty = (80 - battery_charge) * 2  # Penalty for the time spent recharging
+            charging_penalty = (80 - battery_charge) * 1.5  # Penalty for the time spent recharging
             reward -= charging_penalty  # Subtract a penalty for recharging
             battery_charge = 80  # Recharge the battery to full capacity (80)
         
@@ -307,20 +307,20 @@ class QLearning:
 def plot_learning_metrics(q_learning_instance):
     """Plot the reward, distance, travel time, and waiting time per epoch."""
     # Plot Q-value convergence
-    plt.figure()
-    plt.plot(q_learning_instance.q_convergence)
-    plt.xlabel('Epoch')
-    plt.ylabel('Max Q-Value Change')
-    plt.title('Q-Value Convergence')
-    plt.savefig('q_value_convergence.png')
+    # plt.figure()
+    # plt.plot(q_learning_instance.q_convergence)
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Max Q-Value Change')
+    # plt.title('Q-Value Convergence')
+    # plt.savefig('q_value_convergence.png')
 
-    # Plot reward per epoch
-    plt.figure()
-    plt.plot(q_learning_instance.epoch_rewards)
-    plt.xlabel('Epoch')
-    plt.ylabel('Total Reward')
-    plt.title('Reward per Epoch')
-    plt.savefig('reward_per_epoch.png')
+    # # Plot reward per epoch
+    # plt.figure()
+    # plt.plot(q_learning_instance.epoch_rewards)
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Total Reward')
+    # plt.title('Reward per Epoch')
+    # plt.savefig('reward_per_epoch.png')
 
     # Plot total traveled distance per epoch
     plt.figure()
@@ -328,7 +328,7 @@ def plot_learning_metrics(q_learning_instance):
     plt.xlabel('Epoch')
     plt.ylabel('Total Distance')
     plt.title('Total Traveled Distance per Epoch')
-    plt.savefig('total_distance_per_epoch.png')
+    plt.savefig('total_distance_per_epoch_TQ.png')
 
     # Plot total traveling time per epoch
     plt.figure()
@@ -336,7 +336,7 @@ def plot_learning_metrics(q_learning_instance):
     plt.xlabel('Epoch')
     plt.ylabel('Total Travel Time')
     plt.title('Total Travel Time per Epoch')
-    plt.savefig('total_travel_time_per_epoch.png')
+    plt.savefig('total_travel_time_per_epoch_TQ.png')
 
     # Plot total waiting time for charging per epoch
     plt.figure()
@@ -344,4 +344,4 @@ def plot_learning_metrics(q_learning_instance):
     plt.xlabel('Epoch')
     plt.ylabel('Total Waiting Time')
     plt.title('Total Waiting Time for Charging per Epoch')
-    plt.savefig('total_waiting_time_per_epoch.png')
+    plt.savefig('total_waiting_time_per_epoch_TQ.png')

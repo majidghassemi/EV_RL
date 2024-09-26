@@ -118,16 +118,16 @@ class SimpleQLearning:
 
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
-        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.5
+        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.85
         battery_charge -= battery_consumed
 
-        reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])  # Base negative reward
+        reward = -(2.5 * self.adjacency_matrix[int(s_cur)][int(s_next)])  # Base negative reward
 
         if battery_charge < 20:
             reward -= 1000  # Penalize if battery falls below 20
 
         if s_next in self.charging_stations and battery_charge < 20:
-            charging_penalty = (80 - battery_charge) * 2
+            charging_penalty = (80 - battery_charge) * 1.5
             reward -= charging_penalty  # Penalize for recharging
             battery_charge = 80  # Recharge to full
 
