@@ -2,7 +2,8 @@ from road_network import RandomGraph
 from TERC2 import TERC2
 from HQLearning import QLearning
 from SimpleQLearning import SimpleQLearning
-from DQN import DQNetwork, DQNAgent
+# from DQN import DQNetwork, DQNAgent
+from DQN import DQN, DeepQLearning
 import networkx as nx
 import pickle
 import numpy as np
@@ -105,19 +106,24 @@ dqn_agent = DeepQLearning(
     charging_stations=charging_stations
 )
 
-# Run DQN using start_state and end_state
-best_epoch_results = dqn_agent.train(
-    start_state=start_state, 
-    end_state=end_state, 
-    num_epochs=250  # Note: The parameter is num_epochs, not num_epoch
-)
+# # Run DQN using start_state and end_state
+# best_epoch_results = dqn_agent.train(
+#     start_state=start_state, 
+#     end_state=end_state, 
+#     num_epochs=250  # Note: The parameter is num_epochs, not num_epoch
+# )
+
+best_path, best_reward, min_travel_time = dqn_agent.dqn_learning(start_state=start_state, end_state=end_state, num_epoch=250)
+
 
 # Extract results
 best_path = best_epoch_results['path']
 best_reward = best_epoch_results['reward']
 min_travel_time = best_epoch_results['travel_time']
 
+
 # Output the results
 print(f"Best path found by DQN: {best_path}")
 print(f"Best reward achieved: {best_reward}")
 print(f"Minimized travel time: {min_travel_time}")
+
