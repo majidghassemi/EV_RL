@@ -109,7 +109,7 @@ class DeepQLearning:
         batch = list(zip(*batch))  # Transpose batch
 
         state_batch = torch.tensor(batch[0], device=self.device, dtype=torch.long)
-        action_batch = torch.tensor(batch[1], device=self.device, dtype=torch.long)
+        action_batch = torch.tensor(batch[1], device=self.device, dtype=torch.long).unsqueeze(1)  # Add unsqueeze here
         reward_batch = torch.tensor(batch[2], device=self.device, dtype=torch.float32)
         next_state_batch = torch.tensor(batch[3], device=self.device, dtype=torch.long)
         done_batch = torch.tensor(batch[4], device=self.device, dtype=torch.float32)
@@ -117,12 +117,12 @@ class DeepQLearning:
         next_battery_charge_batch = torch.tensor(batch[6], device=self.device, dtype=torch.float32) / self.initial_battery_charge
 
         # Compute current Q-values
-        q_values = self.policy_net(state_batch, battery_charge_batch)
-        q_values = q_values.gather(1, action_batch)
+        q_values = self.policy_net(state_batch, battery_charge_batch)  # Shape: [batch_size, num_nodes]
+        q_values = q_values.gather(1, action_batch)  # Shape: [batch_size, 1]
 
         # Compute next Q-values using target network
         with torch.no_grad():
-            next_q_values = self.target_net(next_state_batch, next_battery_charge_batch)
+            next_q_values = self.target_net(next_state_batch, next_battery_charge_batch)  # Shape: [batch_size, num_nodes]
             max_next_q_values = []
             for idx, next_state in enumerate(next_state_batch):
                 valid_actions = np.where(self.adjacency_matrix[int(next_state.cpu().numpy())] > 0)[0]
@@ -143,6 +143,7 @@ class DeepQLearning:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
 
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
