@@ -134,7 +134,7 @@
 # Import the relevant classes and libraries
 from road_network import RandomGraph
 from TERC2 import TERC2
-from HQLearning import QLearning
+from TQL import QLearning
 from SimpleQLearning import SimpleQLearning
 from DQN import DQN, DeepQLearning
 import networkx as nx
