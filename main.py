@@ -35,9 +35,6 @@ terc2.export_to_qlearning("q_values.pkl")
 adjacency_matrix = nx.to_numpy_array(generated_graph)
 
 # Set start and end state
-# start_state = np.random.randint(0, num_nodes + 1)
-# end_state = np.random.randint(0, num_nodes + 1)
-
 start_state = np.random.randint(0, num_nodes)
 end_state = np.random.randint(0, num_nodes)
 
@@ -46,17 +43,16 @@ while start_state == end_state:
     end_state = np.random.randint(0, num_nodes)
 
 # ----------------- TQL (Q-Learning) -----------------
-tql_agent = QLearning(adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, q_values_file="q_values.pkl", alpha=0.1, gamma=0.9, epsilon=0.1)
+tql_agent = QLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, q_values_file="q_values.pkl", alpha=0.25, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
 tql_agent.q_learning(start_state=start_state, end_state=end_state, num_epoch=num_epoch, visualize=False, save_video=False)
 tql_rewards = tql_agent.epoch_rewards
 
 # ----------------- Simple Q-Learning -----------------
-simple_q_agent = SimpleQLearning(adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, alpha=0.1, gamma=0.9, epsilon=0.1)
+simple_q_agent = SimpleQLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, alpha=0.25, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
 simple_q_agent.sq_learning(start_state=start_state, end_state=end_state, num_epoch=num_epoch, visualize=False, save_video=False)
 simple_q_rewards = simple_q_agent.epoch_rewards
 
 # ----------------- DQN (Deep Q-Learning) -----------------
-num_nodes = len(adjacency_matrix)
 dqn_agent = DeepQLearning(
     adjacency_matrix=adjacency_matrix,
     num_nodes=num_nodes,
@@ -78,124 +74,68 @@ dqn_rewards = dqn_agent.train_agent(start_state=start_state, end_state=end_state
 
 # ----------------- Plotting and Saving Results -----------------
 
+dpi_quality = 700
+tql_color = 'black'
+ql_color = 'orange'
+dqn_color = 'cyan'
 # Cumulative Reward Comparison
 plt.figure(figsize=(10, 6))
-plt.plot(np.cumsum(tql_rewards), label="TQL (Q-Learning)")
-plt.plot(np.cumsum(simple_q_rewards), label="Simple Q-Learning")
-plt.plot(np.cumsum(dqn_rewards), label="DQN (Deep Q-Learning)")
+plt.plot(np.cumsum(tql_rewards), label="TQL", color=tql_color)
+plt.plot(np.cumsum(simple_q_rewards), label="Q-Learning", color=ql_color)
+plt.plot(np.cumsum(dqn_rewards), label="DQN", color=dqn_color)
 plt.title("Cumulative Reward Comparison")
 plt.xlabel("Episodes")
 plt.ylabel("Cumulative Reward")
 plt.legend()
-plt.savefig('plots/cumulative_reward_comparison.png')
+plt.savefig('plots/cumulative_reward_comparison.png', dpi=dpi_quality)
 plt.close()
 
 # Total Distance Traveled Comparison
 plt.figure(figsize=(10, 6))
-plt.plot(tql_agent.epoch_distances, label="TQL (Q-Learning)")
-plt.plot(simple_q_agent.epoch_distances, label="Simple Q-Learning")
-plt.plot(dqn_agent.epoch_distances, label="DQN (Deep Q-Learning)")
+plt.plot(tql_agent.epoch_distances, label="TQL", color=tql_color)
+plt.plot(simple_q_agent.epoch_distances, label="Q-Learning", color=ql_color)
+plt.plot(dqn_agent.epoch_distances, label="DQN", color=dqn_color)
 plt.title("Total Distance Traveled Comparison")
 plt.xlabel("Episodes")
-plt.ylabel("Distance Traveled")
+plt.ylabel("Distance Traveled (KM)")
 plt.legend()
-plt.savefig('plots/total_distance_comparison.png')
+plt.savefig('plots/total_distance_comparison.png', dpi=dpi_quality)
 plt.close()
-
-# Battery Charge Comparison
-# plt.figure(figsize=(10, 6))
-# plt.plot(tql_agent.epoch_battery, label="TQL (Q-Learning)")
-# plt.plot(simple_q_agent.epoch_battery, label="Simple Q-Learning")
-# plt.plot(dqn_agent.epoch_battery, label="DQN (Deep Q-Learning)")
-# plt.title("Battery Charge Comparison")
-# plt.xlabel("Episodes")
-# plt.ylabel("Remaining Battery Charge")
-# plt.legend()
-# plt.savefig('plots/battery_charge_comparison.png')
-# plt.close()
 
 # Travel Time Comparison
 plt.figure(figsize=(10, 6))
-plt.plot(tql_agent.epoch_travel_times, label="TQL (Q-Learning)")
-plt.plot(simple_q_agent.epoch_travel_times, label="Simple Q-Learning")
-plt.plot(dqn_agent.epoch_travel_times, label="DQN (Deep Q-Learning)")
+plt.plot(tql_agent.epoch_travel_times, label="TQL", color=tql_color)
+plt.plot(simple_q_agent.epoch_travel_times, label="Q-Learning", color=ql_color)
+plt.plot(dqn_agent.epoch_travel_times, label="DQN", color=dqn_color)
 plt.title("Travel Time Comparison")
 plt.xlabel("Episodes")
-plt.ylabel("Travel Time")
+plt.ylabel("Travel Time (Minutes)")
 plt.legend()
-plt.savefig('plots/travel_time_comparison.png')
+plt.savefig('plots/travel_time_comparison.png', dpi=dpi_quality)
 plt.close()
 
 # Waiting Time at Charging Stations Comparison
 plt.figure(figsize=(10, 6))
-plt.plot(tql_agent.epoch_waiting_times, label="TQL (Q-Learning)")
-plt.plot(simple_q_agent.epoch_waiting_times, label="Simple Q-Learning")
-plt.plot(dqn_agent.epoch_waiting_times, label="DQN (Deep Q-Learning)")
+plt.plot(tql_agent.epoch_waiting_times, label="TQL", color=tql_color)
+plt.plot(simple_q_agent.epoch_waiting_times, label="Q-Learning", color=ql_color)
+plt.plot(dqn_agent.epoch_waiting_times, label="DQN", color=dqn_color)
 plt.title("Waiting Time at Charging Stations Comparison")
 plt.xlabel("Episodes")
-plt.ylabel("Waiting Time (Charging Stations)")
+plt.ylabel("Waiting Time (at Charging Stations)")
 plt.legend()
-plt.savefig('plots/waiting_time_comparison.png')
+plt.savefig('plots/waiting_time_comparison.png', dpi=dpi_quality)
 plt.close()
-
-# Epsilon Decay Comparison
-# plt.figure(figsize=(10, 6))
-# plt.plot(tql_agent.epsilon_values, label="TQL (Q-Learning)")
-# plt.plot(simple_q_agent.epsilon_values, label="Simple Q-Learning")
-# plt.plot(dqn_agent.epsilon_values, label="DQN (Deep Q-Learning)")
-# plt.title("Epsilon Decay Comparison")
-# plt.xlabel("Episodes")
-# plt.ylabel("Epsilon Value")
-# plt.legend()
-# plt.savefig('plots/epsilon_decay_comparison.png')
-# plt.close()
-
-# Max Q-Value Change Comparison
-# plt.figure(figsize=(10, 6))
-# plt.plot(tql_agent.epoch_max_q_values, label="TQL (Q-Learning)")
-# plt.plot(simple_q_agent.epoch_max_q_values, label="Simple Q-Learning")
-# plt.plot(dqn_agent.epoch_max_q_values, label="DQN (Deep Q-Learning)")
-# plt.title("Max Q-Value Change Comparison")
-# plt.xlabel("Episodes")
-# plt.ylabel("Max Q-Value Change")
-# plt.legend()
-# plt.savefig('plots/max_q_value_change_comparison.png')
-# plt.close()
 
 # Reward Per Episode Comparison
 plt.figure(figsize=(10, 6))
-plt.plot(tql_rewards, label="TQL (Q-Learning)")
-plt.plot(simple_q_rewards, label="Simple Q-Learning")
-plt.plot(dqn_rewards, label="DQN (Deep Q-Learning)")
+plt.plot(tql_rewards, label="TQL", color=tql_color)
+plt.plot(simple_q_rewards, label="Q-Learning", color=ql_color)
+plt.plot(dqn_rewards, label="DQN", color=dqn_color)
 plt.title("Reward Per Episode Comparison")
 plt.xlabel("Episodes")
 plt.ylabel("Reward")
 plt.legend()
-plt.savefig('plots/reward_per_episode_comparison.png')
+plt.savefig('plots/reward_per_episode_comparison.png', dpi=dpi_quality)
 plt.close()
-
-# # Path Length Per Episode Comparison
-# plt.figure(figsize=(10, 6))
-# plt.plot(tql_agent.epoch_path_lengths, label="TQL (Q-Learning)")
-# plt.plot(simple_q_agent.epoch_path_lengths, label="Simple Q-Learning")
-# plt.plot(dqn_agent.epoch_path_lengths, label="DQN (Deep Q-Learning)")
-# plt.title("Path Length Per Episode Comparison")
-# plt.xlabel("Episodes")
-# plt.ylabel("Number of Steps")
-# plt.legend()
-# plt.savefig('plots/path_length_comparison.png')
-# plt.close()
-
-# # Charging Events Per Episode Comparison
-# plt.figure(figsize=(10, 6))
-# plt.plot(tql_agent.epoch_charging_events, label="TQL (Q-Learning)")
-# plt.plot(simple_q_agent.epoch_charging_events, label="Simple Q-Learning")
-# plt.plot(dqn_agent.epoch_charging_events, label="DQN (Deep Q-Learning)")
-# plt.title("Charging Events Per Episode Comparison")
-# plt.xlabel("Episodes")
-# plt.ylabel("Number of Charging Events")
-# plt.legend()
-# plt.savefig('plots/charging_events_comparison.png')
-# plt.close()
 
 print("All plots have been saved in the 'plots' directory.")
