@@ -32,14 +32,14 @@ start_state = 67
 end_state = 2
 
 # Initialize Q-Learning (TQL)
-tql_agent = QLearning(start_state, end_state, adjacency_matrix, "q_values.pkl", alpha=0.1, gamma=0.9, epsilon=0.1)
+tql_agent = QLearning(start_state, end_state, adjacency_matrix, "q_values.pkl")
 tql_rewards = []
 for i in range(100):
     reward = tql_agent.train()
     tql_rewards.append(reward)
 
 # Initialize Simple Q-Learning
-simple_q_agent = SimpleQLearning(start_state, end_state, adjacency_matrix, alpha=0.1, gamma=0.9, epsilon=0.1)
+simple_q_agent = SimpleQLearning(start_state, end_state, adjacency_matrix)
 simple_q_rewards = []
 for i in range(100):
     reward = simple_q_agent.train()
