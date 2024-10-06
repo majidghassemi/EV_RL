@@ -8,7 +8,7 @@ import pickle
 import os
 
 class QLearning:
-    def __init__(self, adjacency_matrix, num_nodes, charging_stations, q_values_file=None, gamma=0.9, epsilon=0.2, alpha=0.1, epsilon_decay_rate=0.98, min_epsilon=0.01, min_alpha=0.001, battery_charge=80):
+    def __init__(self, adjacency_matrix, num_nodes, charging_stations, q_values_file=None, gamma=0.9, epsilon=0.2, alpha=0.1, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.001, battery_charge=80):
         self.adjacency_matrix = adjacency_matrix  # Use the adjacency matrix passed in during initialization
         self.num_nodes = num_nodes
         self.charging_stations = charging_stations  # Charging stations list
