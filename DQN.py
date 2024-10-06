@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import os
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -14,12 +13,13 @@ class DQN(nn.Module):
     def __init__(self, num_nodes, embedding_dim=16, hidden_dim=64):
         super(DQN, self).__init__()
         self.embedding = nn.Embedding(num_nodes, embedding_dim)
-        self.fc1 = nn.Linear(embedding_dim + 1, hidden_dim)
+        self.fc1 = nn.Linear(embedding_dim + 1, hidden_dim)  # Battery charge is concatenated
         self.fc2 = nn.Linear(hidden_dim, num_nodes)
 
     def forward(self, node_idx, battery_charge):
-        x = self.embedding(node_idx)
-        x = torch.cat([x, battery_charge.unsqueeze(1)], dim=1)
+        x = self.embedding(node_idx)  # Node index to embedding
+        battery_charge = battery_charge.unsqueeze(1)  # Add a dimension for concatenation
+        x = torch.cat([x, battery_charge], dim=1)
         x = torch.relu(self.fc1(x))
         q_values = self.fc2(x)
         return q_values
@@ -71,9 +71,14 @@ class DeepQLearning:
 
         self.steps_done = 0
         self.epoch_rewards = []
-        self.epoch_distances = []
-        self.epoch_travel_times = []
-        self.epoch_waiting_times = []
+        self.epoch_distances = []  # To track total distances per epoch
+        self.epoch_battery = []    # To track battery level per epoch
+        self.epoch_travel_times = []  # To track travel time per epoch
+        self.epoch_waiting_times = []  # To track waiting time at charging stations
+        self.epsilon_values = []  # To track epsilon decay over time
+        self.epoch_max_q_values = []  # To track max Q-value change
+        self.epoch_path_lengths = []  # To track number of steps (path length) per episode
+        self.epoch_charging_events = []  # To track charging events per episode
 
         # Create the epochs directory if it doesn't exist
         if not os.path.exists("epochs"):
@@ -113,27 +118,125 @@ class DeepQLearning:
                 )
                 mask[valid_actions] = 0.0
                 masked_q_values = q_values + mask
-                action = masked_q_values.argmax(dim=1).item()  # Get the action index directly
+                action = masked_q_values.argmax(dim=1).item()
 
-        return action  # Return action as integer
+        return action
 
-    def store_transition(
-        self, state, action, reward, next_state, done, battery_charge, next_battery_charge
-    ):
-        # Store the transition in replay buffer
+    def train_agent(self, start_state, end_state, num_epochs, visualize=True, save_video=True):
+        print("-" * 20)
+        print("Deep Q-Learning begins ...")
+
+        imgs = []
+        steps_done = 0
+
+        for epoch in range(1, num_epochs + 1):
+            battery_charge = self.initial_battery_charge
+            state = start_state
+            epoch_reward = 0
+            path = [state]
+            done = False
+
+            travel_time = 0
+            charging_events = 0
+            while not done:
+                action = self.select_action(state, battery_charge)
+
+                # Compute reward, next state, update battery charge
+                reward, next_battery_charge = self.reward_function(state, action, battery_charge)
+                epoch_reward += reward
+
+                # Check if episode is done
+                if action == end_state or next_battery_charge <= 0:
+                    done = True
+                else:
+                    done = False
+
+                # Store transition
+                self.store_transition(state, action, reward, action, done, battery_charge, next_battery_charge)
+
+                # Perform one step of the optimization
+                self.train_step()
+
+                # Move to the next state
+                travel_time += self.adjacency_matrix[state][action]  # Track travel time
+                if action in self.charging_stations:
+                    charging_events += 1  # Track charging event
+                state = action
+                battery_charge = next_battery_charge
+                path.append(state)
+
+                steps_done += 1
+
+                # Update target network
+                if steps_done % self.target_update_freq == 0:
+                    self.target_net.load_state_dict(self.policy_net.state_dict())
+
+            # Track metrics for plotting
+            self.epoch_rewards.append(epoch_reward)
+            self.epoch_distances.append(self.cal_distance(path))
+            self.epoch_travel_times.append(travel_time)
+            self.epoch_waiting_times.append(0)  # Update with waiting time logic if needed
+            self.epoch_battery.append(battery_charge)
+            self.epsilon_values.append(self.epsilon)
+            self.epoch_path_lengths.append(len(path) - 1)
+            self.epoch_charging_events.append(charging_events)
+
+            # Decay epsilon
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay_rate)
+
+            if visualize:
+                filename = f"epochs/deepq_epoch_{epoch}.png"
+                self.plot_graph(
+                    src_node=path[0],
+                    added_edges=list(zip(path[:-1], path[1:])),
+                    figure_title=f"Deep Q-Learning: Epoch {epoch}, Reward: {epoch_reward}",
+                    filename=filename,
+                )
+                imgs.append(filename)
+
+        print(f"Best path for node {start_state} to node {end_state}: {'->'.join(map(str, self.best_epoch_results['path']))}")
+        print(f"Best battery charge: {self.best_epoch_results['battery']}")
+        print(f"Best reward: {self.best_epoch_results['reward']}")
+        print(f"Minimized Travel Time: {self.best_epoch_results['travel_time']}")
+        print(f"Total Distance: {self.best_epoch_results['distance']}")
+
+        if visualize and save_video:
+            print("Begin to generate gif/mp4 file...")
+            images = [imageio.imread(img) for img in imgs]
+            imageio.mimsave("deepq-learning.gif", images, fps=5)
+
+        return self.epoch_rewards  # Return the cumulative rewards for the entire training
+
+    def cal_distance(self, path):
+        """Calculate the total distance of a given path."""
+        dis = 0
+        for i in range(len(path) - 1):
+            dis += self.adjacency_matrix[path[i]][path[i + 1]]
+        return dis
+
+    def reward_function(self, s_cur, s_next, battery_charge):
+        """Define the reward function with respect to distance and battery charge."""
+        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.85
+        battery_charge -= battery_consumed
+
+        reward = -(
+            2.5 * self.adjacency_matrix[int(s_cur)][int(s_next)]
+        )  # Base negative reward
+
+        if battery_charge < 20:
+            reward -= 1000  # Penalize if battery falls below 20
+
+        if s_next in self.charging_stations and battery_charge < 20:
+            charging_penalty = (80 - battery_charge) * 1.5
+            reward -= charging_penalty  # Penalize for recharging
+            battery_charge = 80  # Recharge to full
+
+        return reward, battery_charge
+
+    def store_transition(self, state, action, reward, next_state, done, battery_charge, next_battery_charge):
         if len(self.replay_buffer) >= self.replay_buffer_size:
             self.replay_buffer.pop(0)
-        self.replay_buffer.append(
-            (
-                state,
-                action,
-                reward,
-                next_state,
-                done,
-                battery_charge,
-                next_battery_charge,
-            )
-        )
+        self.replay_buffer.append((state, action, reward, next_state, done, battery_charge, next_battery_charge))
 
     def train_step(self):
         if len(self.replay_buffer) < self.batch_size:
@@ -191,149 +294,13 @@ class DeepQLearning:
         loss.backward()
         self.optimizer.step()
 
-    def reward_function(self, s_cur, s_next, battery_charge):
-        """Define the reward function with respect to distance and battery charge."""
-        battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.85
-        battery_charge -= battery_consumed
-
-        reward = -(
-            2.5 * self.adjacency_matrix[int(s_cur)][int(s_next)]
-        )  # Base negative reward
-
-        if battery_charge < 20:
-            reward -= 1000  # Penalize if battery falls below 20
-
-        if s_next in self.charging_stations and battery_charge < 20:
-            charging_penalty = (80 - battery_charge) * 1.5
-            reward -= charging_penalty  # Penalize for recharging
-            battery_charge = 80  # Recharge to full
-
-        return reward, battery_charge
-
-    def train(self, start_state, end_state, num_epochs, visualize=True, save_video=True):
-        print("-" * 20)
-        print("Deep Q-Learning begins ...")
-
-        imgs = []
-        steps_done = 0
-
-        for epoch in range(1, num_epochs + 1):
-            battery_charge = self.initial_battery_charge
-            state = start_state
-            epoch_reward = 0
-            path = [state]
-            done = False
-
-            while not done:
-                action = self.select_action(state, battery_charge)  # action is now an integer
-
-                # Compute reward, next state, update battery charge
-                reward, next_battery_charge = self.reward_function(state, action, battery_charge)
-                epoch_reward += reward
-
-                # Check if episode is done
-                if action == end_state or next_battery_charge <= 0:
-                    done = True
-                else:
-                    done = False
-
-                # Store transition
-                self.store_transition(
-                    state,
-                    action,
-                    reward,
-                    action,
-                    done,
-                    battery_charge,
-                    next_battery_charge,
-                )
-
-                # Perform one step of the optimization
-                self.train_step()
-
-                # Move to the next state
-                state = action
-                battery_charge = next_battery_charge
-                path.append(state)
-
-                steps_done += 1
-
-                # Update target network
-                if steps_done % self.target_update_freq == 0:
-                    self.target_net.load_state_dict(self.policy_net.state_dict())
-
-            # Decay epsilon
-            self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay_rate)
-
-            if epoch_reward > self.best_epoch_results["reward"]:
-                self.best_epoch_results = {
-                    "reward": epoch_reward,
-                    "path": path,
-                    "battery": battery_charge,
-                    "distance": self.cal_distance(path),
-                    "travel_time": self.calculate_travel_time(path),
-                    "waiting_time": 0,
-                }
-
-            self.epoch_rewards.append(epoch_reward)
-
-            print(
-                f"Epoch {epoch}: Total Reward: {epoch_reward}, Epsilon: {self.epsilon}"
-            )
-
-            if visualize:
-                filename = f"epochs/deepq_epoch_{epoch}.png"
-                self.plot_graph(
-                    src_node=path[0],
-                    added_edges=list(zip(path[:-1], path[1:])),
-                    figure_title=f"Deep Q-Learning: Epoch {epoch}, Reward: {epoch_reward}",
-                    filename=filename,
-                )
-                imgs.append(filename)  # Append the filename to the list
-
-        print(
-            f"Best path for node {start_state} to node {end_state}: {'->'.join(map(str, self.best_epoch_results['path']))}"
-        )
-        print(f"Best battery charge: {self.best_epoch_results['battery']}")
-        print(f"Best reward: {self.best_epoch_results['reward']}")
-        print(f"Minimized Travel Time: {self.best_epoch_results['travel_time']}")
-        print(f"Total Distance: {self.best_epoch_results['distance']}")
-
-        if visualize and save_video:
-            print("Begin to generate gif/mp4 file...")
-            images = [imageio.imread(img) for img in imgs]  # Read images from the files
-            imageio.mimsave("deepq-learning.gif", images, fps=5)
-
-        return self.best_epoch_results
-
-    def cal_distance(self, path):
-        """Calculate the total distance of a given path."""
-        dis = 0
-        for i in range(len(path) - 1):
-            dis += self.adjacency_matrix[path[i]][path[i + 1]]
-        return dis
-
-    def calculate_travel_time(self, path):
-        """Calculate total travel time for the given path."""
-        travel_time = sum(
-            [
-                self.adjacency_matrix[path[i]][path[i + 1]]
-                for i in range(len(path) - 1)
-            ]
-        )
-        return travel_time
-
-    def plot_graph(
-        self, figure_title=None, src_node=None, added_edges=None, filename=None
-    ):
+    def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):
         """Visualize and save the current graph with the agent's progress."""
         adjacency_matrix = np.array(self.adjacency_matrix)
         rows, cols = np.where(adjacency_matrix > 0)
         edges = list(zip(rows.tolist(), cols.tolist()))
         values = [adjacency_matrix[i][j] for i, j in edges]
-        weighted_edges = [
-            (e[0], e[1], values[idx]) for idx, e in enumerate(edges)
-        ]
+        weighted_edges = [(e[0], e[1], values[idx]) for idx, e in enumerate(edges)]
 
         plt.cla()  # Clear the current axes
         fig = plt.figure(1)
@@ -352,21 +319,15 @@ class DeepQLearning:
         nodes.set_edgecolor("black")
 
         if src_node is not None:
-            nodes = nx.draw_networkx_nodes(
-                G, pos, nodelist=[src_node], node_color="g"
-            )
+            nodes = nx.draw_networkx_nodes(G, pos, nodelist=[src_node], node_color="g")
         else:
             nodes = nx.draw_networkx_nodes(G, pos, nodelist=[0], node_color="g")
 
         nodes.set_edgecolor("black")
-        nx.draw_networkx_edge_labels(
-            G, pos=pos, edge_labels=labels, font_size=15
-        )
+        nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=labels, font_size=15)
 
         if added_edges is not None:
-            nx.draw_networkx_edges(
-                G, pos, edgelist=added_edges, edge_color="r", width=2
-            )
+            nx.draw_networkx_edges(G, pos, edgelist=added_edges, edge_color="r", width=2)
 
         if filename:
             plt.savefig(filename)
