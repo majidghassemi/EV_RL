@@ -131,12 +131,13 @@ class QLearning:
             return None
 
         if random.random() > self.epsilon:
-            q_of_next_states = [q.get((int(s_curr), int(s_next)), 0) for s_next in potential_next_states]
+            q_of_next_states = [q[int(s_curr), int(s_next)] for s_next in potential_next_states]
             s_next = potential_next_states[np.argmax(q_of_next_states)]
         else:
             s_next = random.choice(potential_next_states)
 
         return int(s_next)
+
 
     def epsilon_decay(self, epoch):
         """Decay the epsilon value to reduce exploration over time."""
@@ -146,24 +147,6 @@ class QLearning:
         """Decay the learning rate over time to stabilize updates."""
         self.alpha = max(self.min_alpha, self.alpha * decay_rate)
 
-    # def reward_function(self, s_cur, s_next, battery_charge):
-    #     """Define the reward function with respect to distance and battery charge."""
-    #     battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.3  # Adjusted from 0.9 to 0.3
-    #     battery_charge -= battery_consumed
-        
-    #     reward = -(2 * self.adjacency_matrix[int(s_cur)][int(s_next)])
-        
-    #     if s_next in self.charging_stations and battery_charge < 20:
-    #         # Recharge at charging station
-    #         charging_penalty = (80 - battery_charge) * 2
-    #         reward -= charging_penalty
-    #         battery_charge = 80  # Recharge the battery
-    #     else:
-    #         # Apply severe penalty if the battery is critically low
-    #         if battery_charge <= 19:
-    #             reward -= 1000
-
-    #     return reward, battery_charge
     def reward_function(self, s_cur, s_next, battery_charge):
         """Define the reward function with respect to distance and battery charge."""
         battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.85
