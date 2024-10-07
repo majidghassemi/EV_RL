@@ -45,8 +45,10 @@ class SimpleQLearning:
             dis += self.adjacency_matrix[path[i]][path[i + 1]]
         return dis
 
-    def calculate_travel_time(self, path):
-        travel_time = sum([self.adjacency_matrix[path[i]][path[i+1]] for i in range(len(path) - 1)])
+    def calculate_travel_time(self, path, speed_factor=0.7168953):
+        travel_time = 0
+        for i in range(len(path) - 1):
+            travel_time += self.adjacency_matrix[path[i]][path[i + 1]] / speed_factor
         return travel_time
 
     def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):
@@ -133,18 +135,15 @@ class SimpleQLearning:
         best_path = []
         best_travel_time = float('inf')
 
-        if start_state == end_state:
-            raise Exception("start node(state) can't be target node(state)!")
-
         imgs = []
-        q = self.q_table 
+        q = self.q_table
         convergence_threshold = 1e-5
 
         for i in range(1, num_epoch + 1):
             battery_charge = self.initial_battery_charge
             s_cur = start_state
             path = [s_cur]
-            max_q_change = 0
+            max_q_change = 0  # Track max Q-value change per epoch
 
             epoch_reward = 0
             epoch_distance = 0
@@ -182,19 +181,6 @@ class SimpleQLearning:
             self.epoch_travel_times.append(travel_time)
             self.epoch_waiting_times.append(epoch_waiting_time)
 
-            if travel_time < best_travel_time:
-                best_travel_time = travel_time
-
-            if epoch_reward > self.best_epoch_results['reward']:
-                self.best_epoch_results = {
-                    "reward": epoch_reward,
-                    "path": path,
-                    "battery": battery_charge,
-                    "distance": distance,
-                    "travel_time": travel_time,
-                    "waiting_time": epoch_waiting_time
-                }
-
             self.q_convergence.append(max_q_change)
             self.epoch_rewards.append(epoch_reward)
             self.epsilon_decay(i)
@@ -213,16 +199,5 @@ class SimpleQLearning:
             if max_q_change < convergence_threshold:
                 print(f"Converged after {i} epochs.")
                 break
-
-        print(f"Best path for node {start_state} to node {end_state}: {'->'.join(map(str, self.best_epoch_results['path']))}")
-        print(f"Best battery charge: {self.best_epoch_results['battery']}")
-        print(f"Best reward: {self.best_epoch_results['reward']}")
-        print(f"Minimized Travel Time: {self.best_epoch_results['travel_time']}")
-        print(f"Total Distance: {self.best_epoch_results['distance']}")
-
-        if visualize and save_video:
-            print("Begin to generate gif/mp4 file...")
-            images = [imageio.imread(img) for img in imgs]
-            imageio.mimsave("sq-learning.gif", images, fps=5)
 
         return self.best_epoch_results

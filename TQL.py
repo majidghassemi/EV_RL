@@ -59,9 +59,12 @@ class QLearning:
             dis += self.adjacency_matrix[path[i]][path[i + 1]]
         return dis
 
-    def calculate_travel_time(self, path):
-        travel_time = sum([self.adjacency_matrix[path[i]][path[i+1]] for i in range(len(path) - 1)])
+    def calculate_travel_time(self, path, speed_factor=0.7168953):
+        travel_time = 0
+        for i in range(len(path) - 1):
+            travel_time += self.adjacency_matrix[path[i]][path[i + 1]] / speed_factor
         return travel_time
+
 
     def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):
         adjacency_matrix = np.array(self.adjacency_matrix)
