@@ -13,12 +13,12 @@ class DQN(nn.Module):
     def __init__(self, num_nodes, embedding_dim=16, hidden_dim=64):
         super(DQN, self).__init__()
         self.embedding = nn.Embedding(num_nodes, embedding_dim)
-        self.fc1 = nn.Linear(embedding_dim + 1, hidden_dim)  # Battery charge is concatenated
+        self.fc1 = nn.Linear(embedding_dim + 1, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, num_nodes)
 
     def forward(self, node_idx, battery_charge):
-        x = self.embedding(node_idx)  # Node index to embedding
-        battery_charge = battery_charge.unsqueeze(1)  # Add a dimension for concatenation
+        x = self.embedding(node_idx)
+        battery_charge = battery_charge.unsqueeze(1)
         x = torch.cat([x, battery_charge], dim=1)
         x = torch.relu(self.fc1(x))
         q_values = self.fc2(x)
@@ -56,31 +56,28 @@ class DeepQLearning:
         self.learning_rate = learning_rate
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Initialize policy and target networks
         self.policy_net = DQN(num_nodes).to(self.device)
         self.target_net = DQN(num_nodes).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        # Initialize optimizer
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
 
-        # Experience replay buffer
         self.replay_buffer = []
         self.replay_buffer_size = replay_buffer_size
 
         self.steps_done = 0
         self.epoch_rewards = []
-        self.epoch_distances = []  # To track total distances per epoch
-        self.epoch_battery = []    # To track battery level per epoch
-        self.epoch_travel_times = []  # To track travel time per epoch
-        self.epoch_waiting_times = []  # To track waiting time at charging stations
-        self.epsilon_values = []  # To track epsilon decay over time
-        self.epoch_max_q_values = []  # To track max Q-value change
-        self.epoch_path_lengths = []  # To track number of steps (path length) per episode
-        self.epoch_charging_events = []  # To track charging events per episode
+        self.epoch_distances = []
+        self.epoch_battery = []
+        self.epoch_travel_times = []
+        self.epoch_waiting_times = []
+        self.epsilon_values = []
+        self.epoch_max_q_values = []
+        self.epoch_path_lengths = []
+        self.epoch_charging_events = []
 
-        # Create the epochs directory if it doesn't exist
+       
         if not os.path.exists("epochs"):
             os.makedirs("epochs")
 
@@ -103,16 +100,13 @@ class DeepQLearning:
         valid_actions = np.where(self.adjacency_matrix[int(current_node)] > 0)[0]
 
         if random.random() < self.epsilon:
-            # Randomly select a valid action
             action = random.choice(valid_actions)
         else:
-            # Use the policy network to select the best action among valid actions
             with torch.no_grad():
                 current_node_tensor = torch.tensor(
                     [current_node], device=self.device, dtype=torch.long
                 )
                 q_values = self.policy_net(current_node_tensor, battery_charge_tensor)
-                # Create a mask of valid actions
                 mask = torch.full(
                     (self.num_nodes,), float("-inf"), device=self.device
                 )
@@ -141,47 +135,39 @@ class DeepQLearning:
             while not done:
                 action = self.select_action(state, battery_charge)
 
-                # Compute reward, next state, update battery charge
                 reward, next_battery_charge = self.reward_function(state, action, battery_charge)
                 epoch_reward += reward
 
-                # Check if episode is done
                 if action == end_state or next_battery_charge <= 0:
                     done = True
                 else:
                     done = False
 
-                # Store transition
                 self.store_transition(state, action, reward, action, done, battery_charge, next_battery_charge)
 
-                # Perform one step of the optimization
                 self.train_step()
 
-                # Move to the next state
                 travel_time += self.adjacency_matrix[state][action]  # Track travel time
                 if action in self.charging_stations:
-                    charging_events += 1  # Track charging event
+                    charging_events += 1
                 state = action
                 battery_charge = next_battery_charge
                 path.append(state)
 
                 steps_done += 1
 
-                # Update target network
                 if steps_done % self.target_update_freq == 0:
                     self.target_net.load_state_dict(self.policy_net.state_dict())
 
-            # Track metrics for plotting
             self.epoch_rewards.append(epoch_reward)
             self.epoch_distances.append(self.cal_distance(path))
             self.epoch_travel_times.append(travel_time)
-            self.epoch_waiting_times.append(0)  # Update with waiting time logic if needed
+            self.epoch_waiting_times.append(0)
             self.epoch_battery.append(battery_charge)
             self.epsilon_values.append(self.epsilon)
             self.epoch_path_lengths.append(len(path) - 1)
             self.epoch_charging_events.append(charging_events)
 
-            # Decay epsilon
             self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay_rate)
 
             if visualize:
@@ -205,32 +191,29 @@ class DeepQLearning:
             images = [imageio.imread(img) for img in imgs]
             imageio.mimsave("deepq-learning.gif", images, fps=5)
 
-        return self.epoch_rewards  # Return the cumulative rewards for the entire training
+        return self.epoch_rewards
 
     def cal_distance(self, path):
-        """Calculate the total distance of a given path."""
         dis = 0
         for i in range(len(path) - 1):
             dis += self.adjacency_matrix[path[i]][path[i + 1]]
         return dis
 
     def reward_function(self, s_cur, s_next, battery_charge):
-        """Define the reward function with respect to distance and battery charge."""
         battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.85
         battery_charge -= battery_consumed
 
         reward = -(
             2.5 * self.adjacency_matrix[int(s_cur)][int(s_next)]
-        )  # Base negative reward
+        )
 
         if battery_charge < 20:
-            reward -= 1000  # Penalize if battery falls below 20
+            reward -= 1000
 
         if s_next in self.charging_stations and battery_charge < 20:
             charging_penalty = (80 - battery_charge) * 1.5
-            reward -= charging_penalty  # Penalize for recharging
-            battery_charge = 80  # Recharge to full
-
+            reward -= charging_penalty
+            battery_charge = 80
         return reward, battery_charge
 
     def store_transition(self, state, action, reward, next_state, done, battery_charge, next_battery_charge):
@@ -240,10 +223,10 @@ class DeepQLearning:
 
     def train_step(self):
         if len(self.replay_buffer) < self.batch_size:
-            return  # Not enough samples to train
+            return
 
         batch = random.sample(self.replay_buffer, self.batch_size)
-        batch = list(zip(*batch))  # Transpose batch
+        batch = list(zip(*batch))
 
         state_batch = torch.tensor(batch[0], device=self.device, dtype=torch.long)
         action_batch = torch.tensor(batch[1], device=self.device, dtype=torch.long).unsqueeze(1)
@@ -259,11 +242,9 @@ class DeepQLearning:
             / self.initial_battery_charge
         )
 
-        # Compute current Q-values
         q_values = self.policy_net(state_batch, battery_charge_batch)
         q_values = q_values.gather(1, action_batch).squeeze()
 
-        # Compute next Q-values using target network
         with torch.no_grad():
             next_q_values = self.target_net(next_state_batch, next_battery_charge_batch)
             max_next_q_values = []
@@ -283,13 +264,10 @@ class DeepQLearning:
                     max_next_q_values.append(max_next_q_value)
             max_next_q_values = torch.stack(max_next_q_values)
 
-        # Compute target Q-values
         target_q_values = reward_batch + self.gamma * max_next_q_values * (1 - done_batch)
 
-        # Compute loss
         loss = nn.functional.mse_loss(q_values, target_q_values)
 
-        # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -302,7 +280,7 @@ class DeepQLearning:
         values = [adjacency_matrix[i][j] for i, j in edges]
         weighted_edges = [(e[0], e[1], values[idx]) for idx, e in enumerate(edges)]
 
-        plt.cla()  # Clear the current axes
+        plt.cla()
         fig = plt.figure(1)
         if figure_title is None:
             plt.title("The shortest path for every node to the target")

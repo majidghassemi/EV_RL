@@ -24,10 +24,8 @@ class SimpleQLearning:
         self.epoch_travel_times = []
         self.epoch_waiting_times = []
 
-        # Initialize Q-table with zeros
         self.q_table = np.zeros((self.num_nodes, self.num_nodes))
 
-        # Create the epochs directory if it doesn't exist
         if not os.path.exists("epochs"):
             os.makedirs("epochs")
 
@@ -42,19 +40,16 @@ class SimpleQLearning:
         self.best_travel_time = float('inf')
 
     def cal_distance(self, path):
-        """Calculate the total distance of a given path."""
         dis = 0
         for i in range(len(path) - 1):
             dis += self.adjacency_matrix[path[i]][path[i + 1]]
         return dis
 
     def calculate_travel_time(self, path):
-        """Calculate total travel time for the given path."""
         travel_time = sum([self.adjacency_matrix[path[i]][path[i+1]] for i in range(len(path) - 1)])
         return travel_time
 
     def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):
-        """Visualize and save the current graph with the agent's progress."""
         adjacency_matrix = np.array(self.adjacency_matrix)
         rows, cols = np.where(adjacency_matrix > 0)
         edges = list(zip(rows.tolist(), cols.tolist()))
@@ -95,7 +90,6 @@ class SimpleQLearning:
         plt.close(fig)
 
     def epsilon_greedy(self, s_curr, q):
-        """Select next state using epsilon-greedy strategy."""
         potential_next_states = np.where(np.array(self.adjacency_matrix[int(s_curr)]) > 0)[0]
         if len(potential_next_states) == 0:
             return None
@@ -109,15 +103,12 @@ class SimpleQLearning:
         return int(s_next)
 
     def epsilon_decay(self, epoch):
-        """Decay the epsilon value to reduce exploration over time."""
         self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay_rate)
 
     def learning_rate_scheduler(self, epoch, decay_rate=0.99):
-        """Decay the learning rate over time to stabilize updates."""
         self.alpha = max(self.min_alpha, self.alpha * decay_rate)
 
     def reward_function(self, s_cur, s_next, battery_charge):
-        """Define the reward function with respect to distance and battery charge."""
         battery_consumed = self.adjacency_matrix[int(s_cur)][int(s_next)] * 0.85
         battery_charge -= battery_consumed
 
@@ -134,7 +125,6 @@ class SimpleQLearning:
         return reward, battery_charge
 
     def sq_learning(self, start_state, end_state, num_epoch, visualize=True, save_video=True):
-        """Run the Q-learning algorithm."""
         print("-" * 20)
         print("sq_learning begins ...")
 
@@ -218,7 +208,7 @@ class SimpleQLearning:
                                 added_edges=list(zip(path[:-1], path[1:])),
                                 figure_title=f"sq-learning: epoch {i}, reward: {reward}",
                                 filename=filename)
-                imgs.append(filename)  # Append the filename to the list
+                imgs.append(filename)
 
             if max_q_change < convergence_threshold:
                 print(f"Converged after {i} epochs.")
@@ -232,7 +222,7 @@ class SimpleQLearning:
 
         if visualize and save_video:
             print("Begin to generate gif/mp4 file...")
-            images = [imageio.imread(img) for img in imgs]  # Read images from the files
+            images = [imageio.imread(img) for img in imgs]
             imageio.mimsave("sq-learning.gif", images, fps=5)
 
         return self.best_epoch_results
