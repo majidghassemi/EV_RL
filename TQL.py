@@ -59,11 +59,17 @@ class QLearning:
             dis += self.adjacency_matrix[path[i]][path[i + 1]]
         return dis
 
-    def calculate_travel_time(self, path, speed_factor=0.7168953):
+    def calculate_travel_time(self, path, base_speed=0.85, traffic_factor=1.33):
         travel_time = 0
         for i in range(len(path) - 1):
-            travel_time += self.adjacency_matrix[path[i]][path[i + 1]] / speed_factor
+            distance = self.adjacency_matrix[path[i]][path[i + 1]]
+            
+            # Combine base speed and traffic factor to calculate time for this segment
+            speed = base_speed / traffic_factor
+            travel_time += distance / speed
+        
         return travel_time
+
 
 
     def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):

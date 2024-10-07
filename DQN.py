@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-
 class DQN(nn.Module):
     def __init__(self, num_nodes, embedding_dim=16, hidden_dim=64):
         super(DQN, self).__init__()
@@ -23,7 +22,6 @@ class DQN(nn.Module):
         x = torch.relu(self.fc1(x))
         q_values = self.fc2(x)
         return q_values
-
 
 class DeepQLearning:
     def __init__(
@@ -150,7 +148,7 @@ class DeepQLearning:
                 if q_change is not None:
                     max_q_change = max(max_q_change, q_change)
 
-                travel_time += self.adjacency_matrix[state][action] / 0.7168953
+                travel_time += self.calculate_travel_time([state, action], base_speed=0.85, traffic_factor=1.33)
                 if action in self.charging_stations:
                     charging_events += 1
                 state = action
@@ -174,6 +172,10 @@ class DeepQLearning:
 
             self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay_rate)
 
+            print(f"Epoch {epoch}: Total Reward: {epoch_reward}, Distance: {self.epoch_distances[-1]}, "
+                  f"Travel Time: {travel_time}, Max Q-Value Change: {max_q_change}, Battery Charge: {battery_charge}, "
+                  f"Epsilon: {self.epsilon}")
+
             if visualize:
                 filename = f"epochs/deepq_epoch_{epoch}.png"
                 self.plot_graph(
@@ -196,6 +198,14 @@ class DeepQLearning:
             imageio.mimsave("deepq-learning.gif", images, fps=5)
 
         return self.epoch_rewards
+
+    def calculate_travel_time(self, path, base_speed=1.0, traffic_factor=1.0):
+        travel_time = 0
+        for i in range(len(path) - 1):
+            distance = self.adjacency_matrix[path[i]][path[i + 1]]
+            speed = base_speed / traffic_factor
+            travel_time += distance / speed
+        return travel_time
 
     def cal_distance(self, path):
         dis = 0
@@ -279,7 +289,6 @@ class DeepQLearning:
         return q_change
 
     def plot_graph(self, figure_title=None, src_node=None, added_edges=None, filename=None):
-        """Visualize and save the current graph with the agent's progress."""
         adjacency_matrix = np.array(self.adjacency_matrix)
         rows, cols = np.where(adjacency_matrix > 0)
         edges = list(zip(rows.tolist(), cols.tolist()))
