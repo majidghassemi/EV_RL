@@ -8,37 +8,28 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Define global variable for the number of epochs
 num_epoch = 5
 
-# Create a directory to save plots if it doesn't exist
 if not os.path.exists("plots"):
     os.makedirs("plots")
 
-# Generate the road network using RandomGraph
-num_nodes = 100
-graph_generator = RandomGraph(num_nodes, 0.085, 42, 1)
+num_nodes = 125
+graph_generator = RandomGraph(num_nodes, 0.065, 42, 1)
 generated_graph, charging_stations = graph_generator.generate_graph(show_stat=True)
 
-# Initialize TERC2 with the generated graph
 terc2 = TERC2(generated_graph)
 
-# Add charging nodes to TERC2
 for station in charging_stations:
     terc2.add_charging_nodes(station)
 
-# Export results for Q-learning initialization
 terc2.export_terc_results("terc_results.pkl")
 terc2.export_to_qlearning("q_values.pkl")
 
-# Extract the adjacency matrix from the generated graph
 adjacency_matrix = nx.to_numpy_array(generated_graph)
 
-# Set start and end state
 start_state = np.random.randint(0, num_nodes)
 end_state = np.random.randint(0, num_nodes)
 
-# Ensure start_state and end_state are not the same
 while start_state == end_state:
     end_state = np.random.randint(0, num_nodes)
 
@@ -59,7 +50,7 @@ dqn_agent = DeepQLearning(
     charging_stations=charging_stations,
     gamma=0.9,              
     epsilon=0.2,            
-    alpha=0.001,            
+    alpha=0.01,            
     epsilon_decay_rate=0.999,
     min_epsilon=0.01,       
     battery_charge=80,      
@@ -69,7 +60,6 @@ dqn_agent = DeepQLearning(
     learning_rate=1e-3
 )
 
-# Collect DQN rewards
 dqn_rewards = dqn_agent.train_agent(start_state=start_state, end_state=end_state, num_epochs=num_epoch, visualize=False, save_video=False)
 
 # ----------------- Plotting and Saving Results -----------------
@@ -78,64 +68,90 @@ dpi_quality = 700
 tql_color = 'black'
 ql_color = 'orange'
 dqn_color = 'cyan'
-# Cumulative Reward Comparison
-plt.figure(figsize=(10, 6))
+font_size_labels = 17
+font_size_ticks = 19
+font_size_legend = 14
+fig_size_width = 8
+fig_size_height = 12
+
+plt.figure(figsize=(fig_size_height, fig_size_width))
 plt.plot(np.cumsum(tql_rewards), label="TQL", color=tql_color)
 plt.plot(np.cumsum(simple_q_rewards), label="Q-Learning", color=ql_color)
 plt.plot(np.cumsum(dqn_rewards), label="DQN", color=dqn_color)
-plt.title("Cumulative Reward Comparison")
-plt.xlabel("Episodes")
-plt.ylabel("Cumulative Reward")
-plt.legend()
-plt.savefig('plots/cumulative_reward_comparison.png', dpi=dpi_quality)
+plt.title(f"Cumulative Reward Comparison ({num_nodes})", fontsize=font_size_labels)
+plt.xlabel("Episodes", fontsize=font_size_labels)
+plt.ylabel("Cumulative Reward", fontsize=font_size_labels)
+plt.xticks(fontsize=font_size_ticks)
+plt.yticks(fontsize=font_size_ticks)
+plt.legend(fontsize=font_size_legend)
+plt.savefig(f'plots/{num_nodes}/cumulative_reward_comparison.png', dpi=dpi_quality)
 plt.close()
 
-# Total Distance Traveled Comparison
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(fig_size_height, fig_size_width))
 plt.plot(tql_agent.epoch_distances, label="TQL", color=tql_color)
 plt.plot(simple_q_agent.epoch_distances, label="Q-Learning", color=ql_color)
 plt.plot(dqn_agent.epoch_distances, label="DQN", color=dqn_color)
-plt.title("Total Distance Traveled Comparison")
-plt.xlabel("Episodes")
-plt.ylabel("Distance Traveled (KM)")
-plt.legend()
-plt.savefig('plots/total_distance_comparison.png', dpi=dpi_quality)
+plt.title(f"Total Distance Traveled Comparison ({num_nodes}", fontsize=font_size_labels)
+plt.xlabel("Episodes", fontsize=font_size_labels)
+plt.ylabel("Distance Traveled (KM)", fontsize=font_size_labels)
+plt.xticks(fontsize=font_size_ticks)
+plt.yticks(fontsize=font_size_ticks)
+plt.legend(fontsize=font_size_legend)
+plt.savefig(f'plots/{num_nodes}/total_distance_comparison.png', dpi=dpi_quality)
 plt.close()
 
-# Travel Time Comparison
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(fig_size_height, fig_size_width))
 plt.plot(tql_agent.epoch_travel_times, label="TQL", color=tql_color)
 plt.plot(simple_q_agent.epoch_travel_times, label="Q-Learning", color=ql_color)
 plt.plot(dqn_agent.epoch_travel_times, label="DQN", color=dqn_color)
-plt.title("Travel Time Comparison")
-plt.xlabel("Episodes")
-plt.ylabel("Travel Time (Minutes)")
-plt.legend()
-plt.savefig('plots/travel_time_comparison.png', dpi=dpi_quality)
+plt.title(f"Travel Time Comparison ({num_nodes}", fontsize=font_size_labels)
+plt.xlabel("Episodes", fontsize=font_size_labels)
+plt.ylabel("Travel Time (Minutes)", fontsize=font_size_labels)
+plt.xticks(fontsize=font_size_ticks)
+plt.yticks(fontsize=font_size_ticks)
+plt.legend(fontsize=font_size_legend)
+plt.savefig(f'plots/{num_nodes}/travel_time_comparison.png', dpi=dpi_quality)
 plt.close()
 
-# Waiting Time at Charging Stations Comparison
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(fig_size_height, fig_size_width))
 plt.plot(tql_agent.epoch_waiting_times, label="TQL", color=tql_color)
 plt.plot(simple_q_agent.epoch_waiting_times, label="Q-Learning", color=ql_color)
 plt.plot(dqn_agent.epoch_waiting_times, label="DQN", color=dqn_color)
-plt.title("Waiting Time at Charging Stations Comparison")
-plt.xlabel("Episodes")
-plt.ylabel("Waiting Time (at Charging Stations)")
-plt.legend()
-plt.savefig('plots/waiting_time_comparison.png', dpi=dpi_quality)
+plt.title(f"Waiting Time at Charging Stations Comparison ({num_nodes}", fontsize=font_size_labels)
+plt.xlabel("Episodes", fontsize=font_size_labels)
+plt.ylabel("Waiting Time (at Charging Stations)", fontsize=font_size_labels)
+plt.xticks(fontsize=font_size_ticks)
+plt.yticks(fontsize=font_size_ticks)
+plt.legend(fontsize=font_size_legend)
+plt.savefig(f'plots/{num_nodes}/waiting_time_comparison.png', dpi=dpi_quality)
 plt.close()
 
-# Reward Per Episode Comparison
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(fig_size_height, fig_size_width))
 plt.plot(tql_rewards, label="TQL", color=tql_color)
 plt.plot(simple_q_rewards, label="Q-Learning", color=ql_color)
 plt.plot(dqn_rewards, label="DQN", color=dqn_color)
-plt.title("Reward Per Episode Comparison")
-plt.xlabel("Episodes")
-plt.ylabel("Reward")
-plt.legend()
-plt.savefig('plots/reward_per_episode_comparison.png', dpi=dpi_quality)
+plt.title(f"Reward Per Episode Comparison ({num_nodes}", fontsize=font_size_labels)
+plt.xlabel("Episodes", fontsize=font_size_labels)
+plt.ylabel("Reward", fontsize=font_size_labels)
+plt.xticks(fontsize=font_size_ticks)
+plt.yticks(fontsize=font_size_ticks)
+plt.legend(fontsize=font_size_legend)
+plt.savefig(f'plots/{num_nodes}/reward_per_episode_comparison.png', dpi=dpi_quality)
 plt.close()
+
+
+plt.figure(figsize=(fig_size_height, fig_size_width))
+plt.plot(tql_agent.q_value_changes, label="TQL Q-Value Changes", color=tql_color)
+plt.plot(simple_q_agent.q_value_changes, label="Q-Learning Q-Value Changes", color=ql_color)
+plt.plot(dqn_agent.q_value_changes, label="DQN Q-Value Changes", color=dqn_color)
+plt.title(f"Q-Value Change Comparison ({num_nodes})", fontsize=font_size_labels)
+plt.xlabel("Episodes", fontsize=font_size_labels)
+plt.ylabel("Max Q-Value Change", fontsize=font_size_labels)
+plt.xticks(fontsize=font_size_ticks)
+plt.yticks(fontsize=font_size_ticks)
+plt.legend(fontsize=font_size_legend)
+plt.savefig(f'plots/{num_nodes}/q_value_change_comparison.png', dpi=dpi_quality)
+plt.close()
+
 
 print("All plots have been saved in the 'plots' directory.")
