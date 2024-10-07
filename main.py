@@ -33,17 +33,14 @@ end_state = np.random.randint(0, num_nodes)
 while start_state == end_state:
     end_state = np.random.randint(0, num_nodes)
 
-# ----------------- TQL (Q-Learning) -----------------
 tql_agent = QLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, q_values_file="q_values.pkl", alpha=0.25, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
 tql_agent.q_learning(start_state=start_state, end_state=end_state, num_epoch=num_epoch, visualize=False, save_video=False)
 tql_rewards = tql_agent.epoch_rewards
 
-# ----------------- Simple Q-Learning -----------------
 simple_q_agent = SimpleQLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, alpha=0.25, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
 simple_q_agent.sq_learning(start_state=start_state, end_state=end_state, num_epoch=num_epoch, visualize=False, save_video=False)
 simple_q_rewards = simple_q_agent.epoch_rewards
 
-# ----------------- DQN (Deep Q-Learning) -----------------
 dqn_agent = DeepQLearning(
     adjacency_matrix=adjacency_matrix,
     num_nodes=num_nodes,
@@ -62,7 +59,20 @@ dqn_agent = DeepQLearning(
 
 dqn_rewards = dqn_agent.train_agent(start_state=start_state, end_state=end_state, num_epochs=num_epoch, visualize=False, save_video=False)
 
-# ----------------- Plotting and Saving Results -----------------
+def normalize(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
+
+tql_normalized_rewards = normalize(tql_rewards)
+simple_q_normalized_rewards = normalize(simple_q_rewards)
+dqn_normalized_rewards = normalize(dqn_rewards)
+
+tql_normalized_distances = normalize(tql_agent.epoch_distances)
+simple_q_normalized_distances = normalize(simple_q_agent.epoch_distances)
+dqn_normalized_distances = normalize(dqn_agent.epoch_distances)
+
+tql_normalized_travel_times = normalize(tql_agent.epoch_travel_times)
+simple_q_normalized_travel_times = normalize(simple_q_agent.epoch_travel_times)
+dqn_normalized_travel_times = normalize(dqn_agent.epoch_travel_times)
 
 dpi_quality = 700
 tql_color = 'black'
@@ -74,84 +84,60 @@ font_size_legend = 14
 fig_size_width = 8
 fig_size_height = 12
 
+plot_dir = f'plots/{num_nodes}'
+if not os.path.exists(plot_dir):
+    os.makedirs(plot_dir)
+
 plt.figure(figsize=(fig_size_height, fig_size_width))
-plt.plot(np.cumsum(tql_rewards), label="TQL", color=tql_color)
-plt.plot(np.cumsum(simple_q_rewards), label="Q-Learning", color=ql_color)
-plt.plot(np.cumsum(dqn_rewards), label="DQN", color=dqn_color)
-plt.title(f"Cumulative Reward Comparison ({num_nodes})", fontsize=font_size_labels)
+plt.plot(tql_normalized_rewards, label="TQL", color=tql_color)
+plt.plot(simple_q_normalized_rewards, label="Q-Learning", color=ql_color)
+plt.plot(dqn_normalized_rewards, label="DQN", color=dqn_color)
+plt.title(f"Normalized Reward Comparison ({num_nodes})", fontsize=font_size_labels)
 plt.xlabel("Episodes", fontsize=font_size_labels)
-plt.ylabel("Cumulative Reward", fontsize=font_size_labels)
+plt.ylabel("Normalized Reward", fontsize=font_size_labels)
 plt.xticks(fontsize=font_size_ticks)
 plt.yticks(fontsize=font_size_ticks)
 plt.legend(fontsize=font_size_legend)
-plt.savefig(f'plots/{num_nodes}/cumulative_reward_comparison.png', dpi=dpi_quality)
+plt.savefig(f'{plot_dir}/normalized_reward_comparison.png', dpi=dpi_quality)
 plt.close()
 
 plt.figure(figsize=(fig_size_height, fig_size_width))
-plt.plot(tql_agent.epoch_distances, label="TQL", color=tql_color)
-plt.plot(simple_q_agent.epoch_distances, label="Q-Learning", color=ql_color)
-plt.plot(dqn_agent.epoch_distances, label="DQN", color=dqn_color)
-plt.title(f"Total Distance Traveled Comparison ({num_nodes}", fontsize=font_size_labels)
+plt.plot(tql_normalized_distances, label="TQL", color=tql_color)
+plt.plot(simple_q_normalized_distances, label="Q-Learning", color=ql_color)
+plt.plot(dqn_normalized_distances, label="DQN", color=dqn_color)
+plt.title(f"Normalized Distance Traveled Comparison ({num_nodes})", fontsize=font_size_labels)
 plt.xlabel("Episodes", fontsize=font_size_labels)
-plt.ylabel("Distance Traveled (KM)", fontsize=font_size_labels)
+plt.ylabel("Normalized Distance Traveled", fontsize=font_size_labels)
 plt.xticks(fontsize=font_size_ticks)
 plt.yticks(fontsize=font_size_ticks)
 plt.legend(fontsize=font_size_legend)
-plt.savefig(f'plots/{num_nodes}/total_distance_comparison.png', dpi=dpi_quality)
+plt.savefig(f'{plot_dir}/normalized_distance_comparison.png', dpi=dpi_quality)
 plt.close()
 
 plt.figure(figsize=(fig_size_height, fig_size_width))
-plt.plot(tql_agent.epoch_travel_times, label="TQL", color=tql_color)
-plt.plot(simple_q_agent.epoch_travel_times, label="Q-Learning", color=ql_color)
-plt.plot(dqn_agent.epoch_travel_times, label="DQN", color=dqn_color)
-plt.title(f"Travel Time Comparison ({num_nodes}", fontsize=font_size_labels)
+plt.plot(tql_normalized_travel_times, label="TQL", color=tql_color)
+plt.plot(simple_q_normalized_travel_times, label="Q-Learning", color=ql_color)
+plt.plot(dqn_normalized_travel_times, label="DQN", color=dqn_color)
+plt.title(f"Normalized Travel Time Comparison ({num_nodes})", fontsize=font_size_labels)
 plt.xlabel("Episodes", fontsize=font_size_labels)
-plt.ylabel("Travel Time (Minutes)", fontsize=font_size_labels)
+plt.ylabel("Normalized Travel Time", fontsize=font_size_labels)
 plt.xticks(fontsize=font_size_ticks)
 plt.yticks(fontsize=font_size_ticks)
 plt.legend(fontsize=font_size_legend)
-plt.savefig(f'plots/{num_nodes}/travel_time_comparison.png', dpi=dpi_quality)
+plt.savefig(f'{plot_dir}/normalized_travel_time_comparison.png', dpi=dpi_quality)
 plt.close()
 
 plt.figure(figsize=(fig_size_height, fig_size_width))
-plt.plot(tql_agent.epoch_waiting_times, label="TQL", color=tql_color)
-plt.plot(simple_q_agent.epoch_waiting_times, label="Q-Learning", color=ql_color)
-plt.plot(dqn_agent.epoch_waiting_times, label="DQN", color=dqn_color)
-plt.title(f"Waiting Time at Charging Stations Comparison ({num_nodes}", fontsize=font_size_labels)
-plt.xlabel("Episodes", fontsize=font_size_labels)
-plt.ylabel("Waiting Time (at Charging Stations)", fontsize=font_size_labels)
-plt.xticks(fontsize=font_size_ticks)
-plt.yticks(fontsize=font_size_ticks)
-plt.legend(fontsize=font_size_legend)
-plt.savefig(f'plots/{num_nodes}/waiting_time_comparison.png', dpi=dpi_quality)
-plt.close()
-
-plt.figure(figsize=(fig_size_height, fig_size_width))
-plt.plot(tql_rewards, label="TQL", color=tql_color)
-plt.plot(simple_q_rewards, label="Q-Learning", color=ql_color)
-plt.plot(dqn_rewards, label="DQN", color=dqn_color)
-plt.title(f"Reward Per Episode Comparison ({num_nodes}", fontsize=font_size_labels)
-plt.xlabel("Episodes", fontsize=font_size_labels)
-plt.ylabel("Reward", fontsize=font_size_labels)
-plt.xticks(fontsize=font_size_ticks)
-plt.yticks(fontsize=font_size_ticks)
-plt.legend(fontsize=font_size_legend)
-plt.savefig(f'plots/{num_nodes}/reward_per_episode_comparison.png', dpi=dpi_quality)
-plt.close()
-
-
-plt.figure(figsize=(fig_size_height, fig_size_width))
-plt.plot(tql_agent.q_value_changes, label="TQL Q-Value Changes", color=tql_color)
-plt.plot(simple_q_agent.q_value_changes, label="Q-Learning Q-Value Changes", color=ql_color)
-plt.plot(dqn_agent.q_value_changes, label="DQN Q-Value Changes", color=dqn_color)
-plt.title(f"Q-Value Change Comparison ({num_nodes})", fontsize=font_size_labels)
+plt.plot(tql_agent.q_convergence, label="TQL Max Q-Value Change", color=tql_color)
+plt.plot(simple_q_agent.q_convergence, label="Q-Learning Max Q-Value Change", color=ql_color)
+plt.plot(dqn_agent.q_convergence, label="DQN Max Q-Value Change", color=dqn_color)
+plt.title(f"Max Q-Value Change Over Time ({num_nodes})", fontsize=font_size_labels)
 plt.xlabel("Episodes", fontsize=font_size_labels)
 plt.ylabel("Max Q-Value Change", fontsize=font_size_labels)
 plt.xticks(fontsize=font_size_ticks)
 plt.yticks(fontsize=font_size_ticks)
 plt.legend(fontsize=font_size_legend)
-plt.savefig(f'plots/{num_nodes}/q_value_change_comparison.png', dpi=dpi_quality)
+plt.savefig(f'{plot_dir}/q_value_change_comparison.png', dpi=dpi_quality)
 plt.close()
 
-
-print("All plots have been saved in the 'plots' directory.")
+print("All normalized plots have been saved in the 'plots' directory.")
