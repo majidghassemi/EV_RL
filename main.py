@@ -33,11 +33,11 @@ end_state = np.random.randint(0, num_nodes)
 while start_state == end_state:
     end_state = np.random.randint(0, num_nodes)
 
-tql_agent = QLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, q_values_file="q_values.pkl", alpha=0.25, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
+tql_agent = QLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, q_values_file="q_values.pkl", alpha=0.1, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
 tql_agent.q_learning(start_state=start_state, end_state=end_state, num_epoch=num_epoch, visualize=False, save_video=False)
 tql_rewards = tql_agent.epoch_rewards
 
-simple_q_agent = SimpleQLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, alpha=0.25, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
+simple_q_agent = SimpleQLearning(adjacency_matrix=adjacency_matrix, num_nodes=num_nodes, charging_stations=charging_stations, alpha=0.1, gamma=0.9, epsilon=0.25, epsilon_decay_rate=0.999, min_epsilon=0.01, min_alpha=0.01)
 simple_q_agent.sq_learning(start_state=start_state, end_state=end_state, num_epoch=num_epoch, visualize=False, save_video=False)
 simple_q_rewards = simple_q_agent.epoch_rewards
 
@@ -47,7 +47,7 @@ dqn_agent = DeepQLearning(
     charging_stations=charging_stations,
     gamma=0.9,              
     epsilon=0.2,            
-    alpha=0.01,            
+    alpha=0.05,            
     epsilon_decay_rate=0.999,
     min_epsilon=0.01,       
     battery_charge=80,      
