@@ -9,18 +9,29 @@ import torch.nn as nn
 import torch.optim as optim
 
 class DQN(nn.Module):
-    def __init__(self, num_nodes, embedding_dim=16, hidden_dim=64):
+    def __init__(self, num_nodes, embedding_dim=16, hidden_dim=128):
         super(DQN, self).__init__()
         self.embedding = nn.Embedding(num_nodes, embedding_dim)
         self.fc1 = nn.Linear(embedding_dim + 1, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, num_nodes)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)  # Added another hidden layer
+        self.fc3 = nn.Linear(hidden_dim, num_nodes)
+
+        # Initialize weights using Xavier initialization
+        self.apply(self.init_weights)
+
+    def init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
 
     def forward(self, node_idx, battery_charge):
         x = self.embedding(node_idx)
         battery_charge = battery_charge.unsqueeze(1)
         x = torch.cat([x, battery_charge], dim=1)
         x = torch.relu(self.fc1(x))
-        q_values = self.fc2(x)
+        x = torch.relu(self.fc2(x))  # Pass through the added layer
+        q_values = self.fc3(x)
         return q_values
 
 class DeepQLearning:
@@ -35,10 +46,10 @@ class DeepQLearning:
         epsilon_decay_rate=0.999,
         min_epsilon=0.01,
         battery_charge=80,
-        replay_buffer_size=10000,
-        batch_size=64,
-        target_update_freq=10,
-        learning_rate=1e-3,
+        replay_buffer_size=50000,  # Increased replay buffer size
+        batch_size=128,            # Increased batch size
+        target_update_freq=5,      # More frequent target updates
+        learning_rate=5e-4,        # Lower learning rate for stable learning
     ):
         self.adjacency_matrix = adjacency_matrix
         self.num_nodes = num_nodes
@@ -59,7 +70,7 @@ class DeepQLearning:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate, weight_decay=1e-5)  # L2 regularization
 
         self.replay_buffer = []
         self.replay_buffer_size = replay_buffer_size
@@ -284,6 +295,7 @@ class DeepQLearning:
 
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), max_norm=1.0)  # Gradient clipping
         self.optimizer.step()
 
         return q_change
