@@ -14,7 +14,6 @@ class RandomGraph:
         random.seed(seed)
         np.random.seed(seed)
 
-        # Generate initial graphs
         for i in range(0, self.number_of_graphs):
             self.G[i] = nx.erdos_renyi_graph(total_nodes, probability, seed=seed, directed=False)
             while not nx.is_connected(self.G[i]):
@@ -27,7 +26,6 @@ class RandomGraph:
     def generate_graph(self, show_stat=False):
         for q in range(0, self.number_of_graphs):
             for (u, v, w) in self.G[q].edges(data=True):
-                # Assign distance based on normal distribution (mean 100, std deviation 15)
                 ran = max(1, int(np.random.normal(100, 15)))
                 w['distance'] = ran
                 w['battery_reduction'] = int(0.3 * ran)
@@ -43,7 +41,7 @@ class RandomGraph:
 
             while len(checked_nodes) < self.total_nodes:
                 max_distance = 0
-                G2 = nx.generators.ego_graph(self.G[q], latest_station, radius=45, distance="battery_reduction")
+                G2 = nx.generators.ego_graph(self.G[q], latest_station, radius=60, distance="battery_reduction")
                 for a in list(G2.nodes):
                     if a not in checked_nodes:
                         distance = nx.shortest_path_length(self.G[q], source=a, target=latest_station, weight="battery_reduction", method='dijkstra')
@@ -125,13 +123,11 @@ class RandomGraph:
         plt.show()
 
     def export_graph(self, graph, filename):
-        """Exports the graph to a file using pickle."""
         with open(filename, 'wb') as f:
             pickle.dump(graph, f)
         print(f"Graph saved to {filename}")
 
     def import_graph(self, filename):
-        """Imports a graph from a file using pickle."""
         with open(filename, 'rb') as f:
             graph = pickle.load(f)
         print(f"Graph loaded from {filename}")
