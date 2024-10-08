@@ -1,0 +1,32 @@
+For 125 nodes all the algorithms were capable of finding the same path but in different time:
+Total Reward: -5.0, Distance: 2.0, Travel Time: 3.129411764705883
+
+For 250 nodes all the algorithms were capable of finding the same path:
+Epoch 2000: Total Reward: -5.0, Distance: 2.0, Travel Time: 3.129411764705883, Max Q-Value Change: 68.18051147460938, Battery Charge: 78.30000000000001, Epsilon: 0.0270399850795
+
+
+For 500 nodes
+Epoch 1939: Total Reward: -15.0, Distance: 6.0, Travel Time: 9.388235294117647, Max Q-Value Change: 0.361136668224533, Battery Charge: 74.90000000000003, Epsilon: 0.03592705996545944
+
+DQL: Epoch 1272: Total Reward: -7.5, Distance: 3.0, Travel Time: 4.694117647058825, Max Q-Value Change: 1082.822998046875, Battery Charge: 77.45000000000002, Epsilon: 0.05601844111941601
+
+
+
+
+
+
+----------------- Different charging stations ----------------
+Ratio 60:
+
+Epoch 2000: Total Reward: -10.0, Distance: 4.0, Travel Time: 6.258823529411766, Max Q-Value Change: 0.04377023679188405, Battery Charge: 76.60000000000002, Epsilon: 0.03379998134937485
+
+DQL: Epoch 2000: Total Reward: -5.0, Distance: 2.0, Travel Time: 3.129411764705883, Max Q-Value Change: 213.5946807861328, Battery Charge: 78.30000000000001, Epsilon: 0.0270399850795
+
+
+
+
+
+
+Ratio 30:
+Epoch 1816: Total Reward: -10.0, Distance: 4.0, Travel Time: 6.258823529411766, Max Q-Value Change: 0.20592008323974142, Battery Charge: 76.60000000000002, Epsilon: 0.04063185285455041
+Epoch 2000: Total Reward: -5.0, Distance: 2.0, Travel Time: 3.129411764705883, Max Q-Value Change: 4.145276069641113, Battery Charge: 78.30000000000001, Epsilon: 0.0270399850795

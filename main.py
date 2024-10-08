@@ -76,7 +76,7 @@ font_size_legend = 14
 fig_size_width = 8
 fig_size_height = 12
 
-plot_dir = f'plots/{num_nodes}'
+plot_dir = f'plots/{num_nodes}/diff_chargers/60'
 if not os.path.exists(plot_dir):
     os.makedirs(plot_dir)
 
